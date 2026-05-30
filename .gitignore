@@ -1,0 +1,9 @@
+.scion/agents/
+.scion/worktrees/
+.scratch/
+*.pyc
+__pycache__/
+.env
+node_modules/
+dist/
+.DS_Store
