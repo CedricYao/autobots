@@ -1,0 +1,68 @@
+template: artifact-registry-sme
+priority: P3-medium
+project_id: "boutique-demo-22"
+project_number: "258519306384"
+region: "us-central1"
+
+resources:
+  - name: "docker"
+    type: "Artifact Registry Repository"
+    identifier: "projects/boutique-demo-22/locations/us-central1/repositories/docker"
+    format: "DOCKER"
+    mode: "STANDARD_REPOSITORY"
+    size_bytes: 1632639811
+    size_human: "~1.6 GB"
+    vulnerability_scanning: "SCANNING_ACTIVE"
+    cleanup_policy_dry_run: true
+    created: "2022-08-25T21:15:02.353942Z"
+    last_updated: "2022-11-25T12:53:28.688855Z"
+    registry_url: "us-central1-docker.pkg.dev/boutique-demo-22/docker"
+
+  - name: "artifacts.boutique-demo-22.appspot.com"
+    type: "Legacy Container Registry Bucket"
+    note: "Legacy GCR bucket — may contain old images. Consider migrating fully to Artifact Registry."
+
+container_analysis:
+  pubsub_topics:
+    - "container-analysis-occurrences-v1"
+    - "container-analysis-occurrences-v1beta1"
+    - "container-analysis-notes-v1"
+    - "container-analysis-notes-v1beta1"
+  scanning: "active"
+
+known_images:
+  - repository: "docker"
+    image: "frontend-alt"
+    latest_tag: "e3d04a1eb595ddb89ff91ee2c12d21ff486eaff3"
+    used_by:
+      - "frontend-alt-dev"
+      - "frontend-alt-stage"
+      - "frontend-alt-prod"
+
+dependencies:
+  - system: cloud-run-sme
+    resource: "Cloud Run services (all 3)"
+    type: hard
+    note: "All Cloud Run services pull images from this registry"
+  - system: cloud-deploy-sme
+    resource: "Pipeline alt-frontend-demo"
+    type: hard
+    note: "Pipeline builds and publishes images here"
+
+risks:
+  - severity: MEDIUM
+    description: "Cleanup policy is in dry_run mode — images may accumulate indefinitely"
+  - severity: MEDIUM
+    description: "Legacy Container Registry bucket still exists — dual registry confusion risk"
+  - severity: LOW
+    description: "Repository last updated 2022-11-25 — no new images pushed in over 3 years"
+
+health_checks:
+  max_repo_size_gb: 5
+  stale_image_days: 90
+  scanning_enabled: true
+
+escalation_targets:
+  deployment: cloud-deploy-sme
+  runtime: cloud-run-sme
+  security: iam-sme

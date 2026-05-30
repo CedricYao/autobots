@@ -1,0 +1,100 @@
+template: cloud-deploy-sme
+priority: P2-high
+project_id: "boutique-demo-22"
+project_number: "258519306384"
+region: "us-central1"
+
+resources:
+  - name: "alt-frontend-demo"
+    type: "Cloud Deploy Delivery Pipeline"
+    identifier: "projects/boutique-demo-22/locations/us-central1/deliveryPipelines/alt-frontend-demo"
+    description: "Main application pipeline"
+    uid: "5d8fbe06052643a5bf56e5f90d0ce239"
+    created: "2022-09-01T22:32:42.343224065Z"
+    last_updated: "2024-04-05T15:20:46.836286839Z"
+    stages:
+      - target_id: "cloud-run-dev"
+        profile: "dev"
+        requires_approval: false
+      - target_id: "cloud-run-stage"
+        profile: "stage"
+        requires_approval: false
+      - target_id: "cloud-run-prod"
+        profile: "prod"
+        requires_approval: true
+
+targets:
+  - id: "cloud-run-dev"
+    description: "Cloud Run development service"
+    deploy_region: "us-west1"
+    requires_approval: false
+    active: true
+  - id: "cloud-run-stage"
+    description: "Cloud Run staging service"
+    deploy_region: "us-west1"
+    requires_approval: false
+    active: true
+  - id: "cloud-run-prod"
+    description: "Cloud Run production service"
+    deploy_region: "us-west1"
+    requires_approval: true
+    active: true
+  - id: "run-qsdev"
+    description: "Cloud Run development service (quickstart)"
+    deploy_region: "us-west1"
+    requires_approval: false
+    active: true
+  - id: "run-qsstage"
+    description: "Cloud Run staging service (quickstart)"
+    deploy_region: "us-west1"
+    requires_approval: false
+    active: true
+  - id: "run-qsprod"
+    description: "Cloud Run production service (quickstart)"
+    deploy_region: "us-west1"
+    requires_approval: false
+    active: true
+
+build_triggers: []
+source_repo:
+  name: "front-end-demo"
+  url: "https://source.developers.google.com/p/boutique-demo-22/r/front-end-demo"
+
+service_accounts:
+  deploy_runner: "258519306384-compute@developer.gserviceaccount.com"
+  cloud_build: "258519306384@cloudbuild.gserviceaccount.com"
+
+dependencies:
+  - system: cloud-run-sme
+    resource: "Cloud Run services (dev/stage/prod)"
+    type: hard
+    note: "Pipeline deploys to these Cloud Run services"
+  - system: artifact-registry-sme
+    resource: "us-central1-docker.pkg.dev/boutique-demo-22/docker"
+    type: hard
+    note: "Pipeline pulls container images from this registry"
+  - system: iam-sme
+    resource: "258519306384-compute@developer.gserviceaccount.com"
+    type: hard
+    note: "Default compute SA used as deploy job runner"
+
+risks:
+  - severity: HIGH
+    description: "No Cloud Build triggers configured — deployments must be triggered manually via CLI or external automation"
+  - severity: HIGH
+    description: "Prod target requires approval but stage does not — no gate between dev and stage"
+  - severity: MEDIUM
+    description: "Pipeline last updated 2024-04-05 — over 1 year ago. Potential configuration drift."
+  - severity: MEDIUM
+    description: "Default compute SA used as deploy runner — should use dedicated SA with least privilege"
+  - severity: LOW
+    description: "Quickstart targets (run-qs*) may be unused — verify or remove"
+
+health_checks:
+  pipeline_staleness_days: 30
+  failed_release_threshold: 3
+
+escalation_targets:
+  runtime: cloud-run-sme
+  supply_chain: artifact-registry-sme
+  security: iam-sme

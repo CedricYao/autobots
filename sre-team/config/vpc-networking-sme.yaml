@@ -1,0 +1,166 @@
+template: vpc-networking-sme
+priority: P1-critical
+project_id: "boutique-demo-22"
+project_number: "258519306384"
+region: "multi-region (us-central1, us-west1)"
+
+networks:
+  - name: "default"
+    mode: "auto"
+    routing: "regional"
+    note: "All resources use the default VPC — no custom VPCs"
+
+subnets:
+  - name: "gke-vip-subnet"
+    region: "us-central1"
+    cidr: "10.23.0.0/24"
+    purpose: "Internal load balancer VIP for boutique backend services"
+    critical: true
+  - name: "serverless-connector"
+    region: "us-central1"
+    cidr: "10.22.0.0/28"
+    purpose: "VPC Access connector subnet"
+  - name: "aet-uswest1-west1--default-sbnt"
+    region: "us-west1"
+    purpose: "Anthos-related subnet (auto-created)"
+  - name: "default subnets"
+    note: "~45 auto-created default subnets across all regions"
+
+vpc_connectors:
+  - name: "default-connector"
+    region: "us-central1"
+    machine_type: "e2-micro"
+    min_instances: 2
+    max_instances: 10
+    state: "READY"
+    network: "default"
+    subnet: "serverless-connector"
+    used_by: []
+    note: "Available but not currently referenced by any Cloud Run services"
+
+  - name: "west1-default"
+    region: "us-west1"
+    machine_type: "e2-micro"
+    min_instances: 2
+    max_instances: 10
+    state: "READY"
+    network: "default"
+    cidr: "10.10.0.0/28"
+    used_by:
+      - "frontend-alt-dev"
+      - "frontend-alt-stage"
+      - "frontend-alt-prod"
+    note: "Critical path — all Cloud Run services depend on this connector for backend access"
+
+static_ips:
+  - name: "boutique-internal"
+    address: "10.23.0.10"
+    type: "INTERNAL"
+    region: "us-central1"
+    purpose: "SHARED_LOADBALANCER_VIP"
+    subnet: "gke-vip-subnet"
+    status: "RESERVED"
+    critical: true
+    note: "Primary backend endpoint for all Cloud Run services — all 9 microservice addresses resolve through this VIP"
+    backing_forwarding_rule: "none-visible"
+
+  - name: "hostname-server-vip"
+    address: "34.111.28.249"
+    type: "EXTERNAL"
+    region: "global"
+    status: "RESERVED"
+    note: "Reserved but not attached to any forwarding rule — orphaned, incurring charges"
+
+  - name: "workstations-cluster-lbgqr2uherhasss6onzsg2yvl6"
+    address: "10.128.0.11"
+    type: "INTERNAL"
+    region: "us-central1"
+    purpose: "GCE_ENDPOINT"
+    note: "Private Service Connect for Cloud Workstations (likely stale)"
+
+forwarding_rules:
+  - name: "a851856e14de8497ea0a0e9e3672195a"
+    ip: "34.46.255.20"
+    protocol: "TCP"
+    port_range: "80-80"
+    scheme: "EXTERNAL"
+    region: "us-central1"
+    target: "target pool a851856e14de8497ea0a0e9e3672195a"
+    description: "GKE-managed LB for online-boutique-demo/frontend-external"
+    created: "2026-05-27"
+
+firewall_rules:
+  critical:
+    - name: "allow-ilb-permissive"
+      priority: 1
+      direction: "INGRESS"
+      protocols: "ALL"
+      source: "0.0.0.0/0"
+      target: "All instances"
+      severity: CRITICAL
+      note: "EXTREMELY PERMISSIVE — priority 1 allows ALL traffic from anywhere, overriding all other rules"
+
+  gke_active:
+    - name: "gke-online-boutique-764d49-bd6344e1-all"
+      priority: 1000
+      source: "10.91.0.0/17"
+      target: "gke-online-boutique-764d49-bd6344e1-node"
+      note: "Pod-to-node traffic for active GKE cluster"
+    - name: "gke-csm-thc-bd6344e1"
+      priority: 1000
+      source: "Google health check ranges"
+      target: "gke-online-boutique-764d49-bd6344e1-node"
+      note: "Service mesh health checks"
+    - name: "k8s-fw-a851856e14de8497ea0a0e9e3672195a"
+      priority: 999
+      source: "0.0.0.0/0"
+      target: "gke-online-boutique-764d49-bd6344e1-node"
+      port: "TCP:80"
+      note: "Public access to GKE frontend LB on port 80"
+
+  stale:
+    - name: "fw-allow-health-check-and-proxy"
+      target_tag: "gke-boutique-prod-f517d816-node"
+      note: "References deleted GKE cluster gke-boutique-prod — STALE, should be removed"
+    - name: "gke-boutique-cluster-ad6468ab-ssh"
+      target_tag: "gke-boutique-cluster-ad6468ab-node"
+      note: "References deleted GKE cluster gke-boutique-cluster — STALE, should be removed"
+
+cross_region_architecture:
+  cloud_run_region: "us-west1"
+  gke_cluster_region: "us-central1"
+  vpc_connector_regions:
+    - "us-central1 (default-connector)"
+    - "us-west1 (west1-default)"
+  internal_vip_region: "us-central1"
+  external_lb_region: "us-central1"
+  traffic_flow: "Cloud Run (us-west1) → VPC connector (us-west1) → Internal VIP 10.23.0.10 (us-central1) → GKE backends (us-central1)"
+
+dependencies:
+  - system: cloud-run-sme
+    resource: "Cloud Run services in us-west1"
+    type: hard
+    note: "Cloud Run depends on west1-default connector for backend connectivity"
+  - system: microservices-sme
+    resource: "GKE cluster online-boutique-764d49 in us-central1"
+    type: hard
+    note: "Internal VIP routes to GKE-hosted backend services"
+
+risks:
+  - severity: CRITICAL
+    description: "allow-ilb-permissive firewall rule (priority 1) allows ALL protocols from 0.0.0.0/0 to all instances — effectively no firewall"
+  - severity: HIGH
+    description: "Cross-region dependency: Cloud Run (us-west1) → VIP (us-central1) adds latency and partition risk"
+  - severity: HIGH
+    description: "Internal VIP 10.23.0.10 has no visible backing forwarding rule — backend services may be unreachable or backed by GKE cluster"
+  - severity: MEDIUM
+    description: "2 stale GKE firewall rules reference deleted clusters — cleanup needed"
+  - severity: MEDIUM
+    description: "Orphaned external IP 34.111.28.249 incurring charges with no forwarding rule"
+  - severity: LOW
+    description: "VPC connector default-connector in us-central1 is provisioned but unused"
+
+escalation_targets:
+  cloud_run: cloud-run-sme
+  gke: microservices-sme
+  security: iam-sme

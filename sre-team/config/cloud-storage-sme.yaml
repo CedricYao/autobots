@@ -1,0 +1,70 @@
+template: cloud-storage-sme
+priority: P4-low
+project_id: "boutique-demo-22"
+project_number: "258519306384"
+region: "multi-region"
+
+resources:
+  - name: "5d8fbe06052643a5bf56e5f90d0ce239_clouddeploy"
+    location: "us-central1"
+    storage_class: "STANDARD"
+    purpose: "Cloud Deploy artifacts (pipeline alt-frontend-demo)"
+  - name: "09b11b89c3744c10960eb17c71a876a9_clouddeploy"
+    location: "us-central1"
+    storage_class: "STANDARD"
+    purpose: "Cloud Deploy artifacts"
+  - name: "65da93b1eace4fccbcf8690e74a97206_clouddeploy"
+    location: "us-central1"
+    storage_class: "STANDARD"
+    purpose: "Cloud Deploy artifacts"
+  - name: "9abebe880a764b3b98a39b3c49bf16d0_clouddeploy"
+    location: "us-central1"
+    storage_class: "STANDARD"
+    purpose: "Cloud Deploy artifacts"
+  - name: "artifacts.boutique-demo-22.appspot.com"
+    location: "US"
+    storage_class: "STANDARD"
+    purpose: "Legacy Container Registry artifacts"
+  - name: "boutique-demo-22_cloudbuild"
+    location: "US"
+    storage_class: "STANDARD"
+    purpose: "Cloud Build artifacts"
+  - name: "boutique-demo-22-tf-state"
+    location: "us-central1"
+    storage_class: "STANDARD"
+    purpose: "Terraform state backend"
+    critical: true
+    note: "Terraform state — deletion or corruption would be catastrophic"
+  - name: "us-central1.deploy-artifacts.boutique-demo-22.appspot.com"
+    location: "us-central1"
+    storage_class: "STANDARD"
+    purpose: "Deploy artifacts"
+
+summary:
+  total_buckets: 8
+  clouddeploy_buckets: 4
+  build_artifact_buckets: 2
+  terraform_state_buckets: 1
+  legacy_gcr_buckets: 1
+
+risks:
+  - severity: HIGH
+    description: "Terraform state bucket (boutique-demo-22-tf-state) — verify versioning and access controls are enabled"
+  - severity: MEDIUM
+    description: "4 Cloud Deploy buckets suggest multiple pipeline histories — some may be from deleted pipelines"
+  - severity: LOW
+    description: "No lifecycle policies detected — old artifacts may accumulate indefinitely"
+  - severity: LOW
+    description: "Legacy GCR bucket still exists alongside Artifact Registry"
+
+dependencies:
+  - system: cloud-deploy-sme
+    resource: "Cloud Deploy pipeline artifacts"
+    type: soft
+  - system: artifact-registry-sme
+    resource: "Legacy GCR bucket"
+    type: soft
+
+escalation_targets:
+  deployment: cloud-deploy-sme
+  security: iam-sme

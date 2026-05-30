@@ -1,0 +1,129 @@
+template: cloud-run-sme
+priority: P1-critical
+project_id: "boutique-demo-22"
+project_number: "258519306384"
+region: "us-west1"
+
+resources:
+  - name: "frontend-alt-prod"
+    type: "Cloud Run Service"
+    url: "https://frontend-alt-prod-5qeytedvha-uw.a.run.app"
+    environment: production
+    revision: "frontend-alt-prod-lawi7y9v"
+    image: "us-central1-docker.pkg.dev/boutique-demo-22/docker/frontend-alt:e3d04a1eb595ddb89ff91ee2c12d21ff486eaff3"
+    cpu: "1000m"
+    memory: "512Mi"
+    concurrency: 80
+    max_instances: 100
+    min_instances: 0
+    vpc_connector: "west1-default"
+    vpc_egress: "private-ranges-only"
+    service_account: "258519306384-compute@developer.gserviceaccount.com"
+    ingress: "all"
+    managed_by: "google-cloud-deploy"
+    pipeline: "alt-frontend-demo"
+    target: "cloud-run-prod"
+
+  - name: "frontend-alt-stage"
+    type: "Cloud Run Service"
+    url: "https://frontend-alt-stage-5qeytedvha-uw.a.run.app"
+    environment: staging
+    revision: "frontend-alt-stage-lawi7y9v"
+    image: "us-central1-docker.pkg.dev/boutique-demo-22/docker/frontend-alt:e3d04a1eb595ddb89ff91ee2c12d21ff486eaff3"
+    cpu: "1000m"
+    memory: "512Mi"
+    concurrency: 80
+    max_instances: 100
+    min_instances: 0
+    vpc_connector: "west1-default"
+    vpc_egress: "private-ranges-only"
+    service_account: "258519306384-compute@developer.gserviceaccount.com"
+    ingress: "all"
+    managed_by: "google-cloud-deploy"
+    pipeline: "alt-frontend-demo"
+    target: "cloud-run-stage"
+
+  - name: "frontend-alt-dev"
+    type: "Cloud Run Service"
+    url: "https://frontend-alt-dev-5qeytedvha-uw.a.run.app"
+    environment: development
+    revision: "frontend-alt-dev-lawi7y9v"
+    image: "us-central1-docker.pkg.dev/boutique-demo-22/docker/frontend-alt:e3d04a1eb595ddb89ff91ee2c12d21ff486eaff3"
+    cpu: "1000m"
+    memory: "512Mi"
+    concurrency: 80
+    max_instances: 100
+    min_instances: 0
+    vpc_connector: "west1-default"
+    vpc_egress: "private-ranges-only"
+    service_account: "258519306384-compute@developer.gserviceaccount.com"
+    ingress: "all"
+    managed_by: "google-cloud-deploy"
+    pipeline: "alt-frontend-demo"
+    target: "cloud-run-dev"
+
+backend_services:
+  - name: "Ad Service"
+    address: "10.23.0.10:9555"
+  - name: "Cart Service"
+    address: "10.23.0.10:7070"
+  - name: "Checkout Service"
+    address: "10.23.0.10:5050"
+  - name: "Currency Service"
+    address: "10.23.0.10:7000"
+  - name: "Email Service"
+    address: "10.23.0.10:5000"
+  - name: "Payment Service"
+    address: "10.23.0.10:50052"
+  - name: "Product Catalog Service"
+    address: "10.23.0.10:3550"
+  - name: "Recommendation Service"
+    address: "10.23.0.10:8080"
+  - name: "Shipping Service"
+    address: "10.23.0.10:50051"
+
+dependencies:
+  - system: vpc-networking-sme
+    resource: "VPC connector west1-default (us-west1)"
+    type: hard
+    note: "All Cloud Run services route private traffic through this connector"
+  - system: vpc-networking-sme
+    resource: "VPC connector default-connector (us-central1)"
+    type: soft
+    note: "Available but not currently used by Cloud Run services"
+  - system: microservices-sme
+    resource: "Internal VIP 10.23.0.10 (boutique-internal)"
+    type: hard
+    note: "All 9 backend service addresses resolve through this shared ILB VIP"
+  - system: cloud-deploy-sme
+    resource: "Pipeline alt-frontend-demo"
+    type: hard
+    note: "All three services are deployed via this pipeline"
+  - system: artifact-registry-sme
+    resource: "us-central1-docker.pkg.dev/boutique-demo-22/docker"
+    type: hard
+    note: "Container images sourced from this registry"
+
+health_checks:
+  error_rate_threshold: "0.1%"
+  latency_p99_threshold: "1s"
+  cpu_threshold: "60%"
+  memory_threshold: "70%"
+
+risks:
+  - severity: HIGH
+    description: "All three environments use the same image tag (e3d04a1) — no environment-specific differentiation"
+  - severity: HIGH
+    description: "min_instances=0 on prod — cold starts possible under zero traffic"
+  - severity: MEDIUM
+    description: "All services use default Compute Engine SA — no service-specific identity"
+  - severity: MEDIUM
+    description: "Cross-region dependency: Cloud Run in us-west1 depends on VIP 10.23.0.10 in us-central1"
+
+immediate_actions: []
+
+escalation_targets:
+  networking: vpc-networking-sme
+  backend: microservices-sme
+  deployment: cloud-deploy-sme
+  security: iam-sme

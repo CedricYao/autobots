@@ -1,0 +1,161 @@
+project_id: "boutique-demo-22"
+project_number: "258519306384"
+generated_at: "2026-05-30"
+
+risks:
+  # ─── CRITICAL ─────────────────────────────────────────────────
+  - id: "CCR-001"
+    severity: CRITICAL
+    title: "allow-ilb-permissive firewall allows ALL traffic from anywhere"
+    description: |
+      Firewall rule 'allow-ilb-permissive' with priority 1 allows ALL protocols
+      from 0.0.0.0/0 to ALL instances. This effectively disables the firewall
+      for the entire VPC. Any instance in the default network is fully exposed.
+    affected_systems:
+      - vpc-networking-sme
+      - microservices-sme
+      - cloud-run-sme
+    owner: vpc-networking-sme
+    remediation: "Scope rule to specific source ranges and protocols needed for ILB health checks"
+
+  - id: "CCR-002"
+    severity: CRITICAL
+    title: "Single default Compute Engine SA used across all workloads"
+    description: |
+      All Cloud Run services, Cloud Deploy jobs, and build operations use
+      258519306384-compute@developer.gserviceaccount.com with roles/editor.
+      Compromise of any workload grants near-full project access.
+    affected_systems:
+      - iam-sme
+      - cloud-run-sme
+      - cloud-deploy-sme
+    owner: iam-sme
+    remediation: "Create dedicated SAs per workload with least-privilege roles"
+
+  - id: "CCR-003"
+    severity: CRITICAL
+    title: "Cross-project SA with privilege escalation capability"
+    description: |
+      scion-autobot-engineer@deploy-demo-test.iam.gserviceaccount.com has
+      Editor + IAM Admin + Project IAM Admin. It can create new SAs, grant
+      itself Owner, or modify any IAM binding in the project.
+    affected_systems:
+      - iam-sme
+    owner: iam-sme
+    remediation: "Restrict to minimum required roles; remove iam.serviceAccountAdmin and resourcemanager.projectIamAdmin"
+
+  # ─── HIGH ─────────────────────────────────────────────────────
+  - id: "CCR-004"
+    severity: HIGH
+    title: "Cross-region dependency creates latency and partition risk"
+    description: |
+      Cloud Run services (us-west1) connect to backend microservices via
+      VPC connector west1-default to internal VIP 10.23.0.10 in us-central1.
+      Any inter-region connectivity issue severs the frontend from all backends.
+    affected_systems:
+      - cloud-run-sme
+      - vpc-networking-sme
+      - microservices-sme
+    owner: vpc-networking-sme
+    remediation: "Consider co-locating Cloud Run with backends in us-central1, or deploying backends in us-west1"
+
+  - id: "CCR-005"
+    severity: HIGH
+    title: "Shared internal VIP is single point of failure for 9 services"
+    description: |
+      All 9 backend microservices (Ad, Cart, Checkout, Currency, Email,
+      Payment, Product Catalog, Recommendation, Shipping) are accessed via
+      a single VIP 10.23.0.10. Loss of this VIP takes down all backends simultaneously.
+    affected_systems:
+      - microservices-sme
+      - cloud-run-sme
+      - vpc-networking-sme
+    owner: microservices-sme
+    remediation: "Consider per-service VIPs or service mesh routing for isolation"
+
+  - id: "CCR-006"
+    severity: HIGH
+    title: "Cloud Run services have zero alerting coverage"
+    description: |
+      Existing alert policies only cover GKE workloads (paymentservice, productcatalogservice).
+      No alerts exist for Cloud Run error rates, latency, or availability.
+      Also no uptime checks for any service.
+    affected_systems:
+      - cloud-monitoring-sme
+      - cloud-run-sme
+    owner: cloud-monitoring-sme
+    remediation: "Create alert policies for Cloud Run error rate, latency, and instance count; add uptime checks"
+
+  - id: "CCR-007"
+    severity: HIGH
+    title: "11 project owners — excessive privilege distribution"
+    description: |
+      11 individual users have roles/owner on the project. This exceeds
+      best practice of 3-5 owners and increases the credential compromise surface.
+    affected_systems:
+      - iam-sme
+    owner: iam-sme
+    remediation: "Reduce to 3-5 owners; move others to roles/editor or custom roles"
+
+  - id: "CCR-008"
+    severity: HIGH
+    title: "GKE frontend serves HTTP only — no TLS termination"
+    description: |
+      External LB on 34.46.255.20:80 serves unencrypted HTTP. No HTTPS
+      forwarding rule or SSL certificate is configured.
+    affected_systems:
+      - microservices-sme
+      - vpc-networking-sme
+    owner: microservices-sme
+    remediation: "Configure HTTPS with managed SSL certificate or Ingress with TLS"
+
+  # ─── MEDIUM ───────────────────────────────────────────────────
+  - id: "CCR-009"
+    severity: MEDIUM
+    title: "All Cloud Run environments use identical image tag"
+    description: |
+      Dev, stage, and prod Cloud Run services all run the same image
+      (frontend-alt:e3d04a1). No environment-specific differentiation exists.
+    affected_systems:
+      - cloud-run-sme
+      - cloud-deploy-sme
+    owner: cloud-deploy-sme
+    remediation: "Implement environment-specific configurations via Cloud Deploy profiles"
+
+  - id: "CCR-010"
+    severity: MEDIUM
+    title: "Stale resources from deleted GKE clusters"
+    description: |
+      2 firewall rules reference deleted GKE clusters (gke-boutique-prod,
+      gke-boutique-cluster). Orphaned external IP (34.111.28.249) and
+      persistent disk (200GB) from deleted workstation also exist.
+    affected_systems:
+      - vpc-networking-sme
+      - cloud-storage-sme
+    owner: vpc-networking-sme
+    remediation: "Delete stale firewall rules, release orphaned IP, delete unused persistent disk"
+
+  - id: "CCR-011"
+    severity: MEDIUM
+    title: "Distributed tracing disabled on Cloud Run frontend"
+    description: |
+      All Cloud Run services set DISABLE_TRACING=1. Cannot trace requests
+      across the frontend → backend boundary, limiting incident diagnosis.
+    affected_systems:
+      - cloud-run-sme
+      - cloud-monitoring-sme
+    owner: cloud-run-sme
+    remediation: "Remove DISABLE_TRACING=1 env var to enable Cloud Trace integration"
+
+  # ─── LOW ──────────────────────────────────────────────────────
+  - id: "CCR-012"
+    severity: LOW
+    title: "No lifecycle policies on storage buckets"
+    description: |
+      8 storage buckets have no visible lifecycle policies. Old deploy
+      artifacts, build logs, and container images will accumulate indefinitely.
+    affected_systems:
+      - cloud-storage-sme
+      - artifact-registry-sme
+    owner: cloud-storage-sme
+    remediation: "Add lifecycle rules to auto-delete artifacts older than 90 days"

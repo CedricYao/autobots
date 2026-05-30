@@ -1,0 +1,81 @@
+template: cloud-monitoring-sme
+priority: P2-high
+project_id: "boutique-demo-22"
+project_number: "258519306384"
+region: "global"
+
+alerting_policies:
+  - name: "Payment Service Health Alert"
+    enabled: true
+    combiner: "OR"
+    conditions:
+      - display_name: "Container Restarts: paymentservice"
+        type: "conditionThreshold"
+        filter: 'resource.type = "k8s_container" AND resource.labels.namespace_name = "online-boutique-demo" AND resource.labels.container_name = "server" AND metric.type = "kubernetes.io/container/restart_count"'
+        comparison: "COMPARISON_GT"
+        duration: "0s"
+      - display_name: "Node Not Ready"
+        type: "conditionThreshold"
+
+  - name: "Product Catalog p95 Latency Alert"
+    enabled: true
+    conditions:
+      - display_name: "Product Catalog p95 Latency > 1.5s"
+        type: "conditionThreshold"
+
+dashboards:
+  - name: "staging tests"
+  - name: "Staging Service errors"
+
+uptime_checks: []
+
+observability_apis:
+  cloud_trace: "enabled"
+  cloud_profiler: "enabled"
+  cloud_logging: "enabled"
+  cloud_monitoring: "enabled"
+
+gaps:
+  - type: "missing_uptime_checks"
+    severity: HIGH
+    description: "No uptime checks configured for any Cloud Run services or the GKE frontend"
+  - type: "no_prod_dashboard"
+    severity: HIGH
+    description: "Dashboards only cover staging — no production dashboard exists"
+  - type: "limited_alert_coverage"
+    severity: HIGH
+    description: "Only 2 alert policies exist, covering only GKE paymentservice and productcatalogservice. No alerts for Cloud Run services, VPC connectors, or deployment failures."
+  - type: "no_notification_channels_verified"
+    severity: MEDIUM
+    description: "Alert policies exist but notification channel configuration was not verified"
+  - type: "tracing_disabled_on_cloud_run"
+    severity: MEDIUM
+    description: "Cloud Run services have DISABLE_TRACING=1 — distributed tracing is off for the frontend"
+
+dependencies:
+  - system: cloud-run-sme
+    resource: "Cloud Run services"
+    type: soft
+    note: "Should have monitoring coverage but currently does not"
+  - system: microservices-sme
+    resource: "GKE cluster online-boutique-764d49"
+    type: hard
+    note: "Existing alerts target GKE workloads in namespace online-boutique-demo"
+
+risks:
+  - severity: HIGH
+    description: "No uptime checks — no external probing of service availability"
+  - severity: HIGH
+    description: "Cloud Run services have zero alerting coverage"
+  - severity: MEDIUM
+    description: "Tracing disabled on Cloud Run frontend — cannot trace requests across frontend→backend boundary"
+
+health_checks:
+  min_alert_policies: 5
+  min_uptime_checks: 3
+  dashboard_coverage: ["production", "staging"]
+
+escalation_targets:
+  cloud_run: cloud-run-sme
+  gke: microservices-sme
+  networking: vpc-networking-sme

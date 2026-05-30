@@ -1,0 +1,133 @@
+template: microservices-sme
+priority: P1-critical
+project_id: "boutique-demo-22"
+project_number: "258519306384"
+region: "us-central1"
+
+gke_clusters:
+  - name: "online-boutique-764d49"
+    location: "us-central1"
+    status: "RUNNING"
+    type: "Autopilot"
+    master_version: "1.35.3-gke.1389000"
+    node_count: 3
+    network: "default"
+    subnetwork: "default"
+    endpoint: "136.116.79.166"
+    cluster_ipv4_cidr: "10.91.0.0/17"
+    services_ipv4_cidr: "34.118.224.0/20"
+    autoscaling_profile: "OPTIMIZE_UTILIZATION"
+    addons:
+      dns_cache: true
+      gce_pd_csi: true
+      filestore_csi: true
+      gcs_fuse_csi: true
+      parallelstore_csi: true
+      stateful_ha: true
+    service_mesh:
+      anthos_service_mesh: "enabled (firewall rules present)"
+      health_check_rule: "gke-csm-thc-bd6344e1"
+
+namespaces:
+  - name: "online-boutique-demo"
+    note: "Inferred from alerting policies and forwarding rule descriptions"
+
+backend_services:
+  - name: "Ad Service"
+    port: 9555
+    vip: "10.23.0.10"
+  - name: "Cart Service"
+    port: 7070
+    vip: "10.23.0.10"
+  - name: "Checkout Service"
+    port: 5050
+    vip: "10.23.0.10"
+  - name: "Currency Service"
+    port: 7000
+    vip: "10.23.0.10"
+  - name: "Email Service"
+    port: 5000
+    vip: "10.23.0.10"
+  - name: "Payment Service"
+    port: 50052
+    vip: "10.23.0.10"
+    has_alert: true
+    alert_name: "Payment Service Health Alert"
+  - name: "Product Catalog Service"
+    port: 3550
+    vip: "10.23.0.10"
+    has_alert: true
+    alert_name: "Product Catalog p95 Latency Alert"
+  - name: "Recommendation Service"
+    port: 8080
+    vip: "10.23.0.10"
+  - name: "Shipping Service"
+    port: 50051
+    vip: "10.23.0.10"
+
+external_access:
+  - type: "External Load Balancer"
+    name: "frontend-external"
+    ip: "34.46.255.20"
+    port: 80
+    protocol: "TCP"
+    region: "us-central1"
+    target: "GKE target pool"
+    namespace: "online-boutique-demo"
+    note: "Public-facing GKE frontend — separate from Cloud Run frontends"
+
+internal_vip:
+  name: "boutique-internal"
+  address: "10.23.0.10"
+  subnet: "gke-vip-subnet (10.23.0.0/24)"
+  region: "us-central1"
+  purpose: "SHARED_LOADBALANCER_VIP"
+  note: "Serves as single entry point for all 9 backend microservices. Now likely backed by GKE cluster services."
+
+deleted_clusters:
+  - name: "gke-boutique-prod"
+    evidence: "Stale firewall rules with target tag gke-boutique-prod-f517d816-node"
+  - name: "gke-boutique-cluster"
+    evidence: "Stale firewall rules with target tag gke-boutique-cluster-ad6468ab-node"
+
+dependencies:
+  - system: vpc-networking-sme
+    resource: "Internal VIP 10.23.0.10"
+    type: hard
+    note: "All backend services are accessed via this shared VIP"
+  - system: vpc-networking-sme
+    resource: "GKE cluster networking (10.91.0.0/17)"
+    type: hard
+  - system: cloud-run-sme
+    resource: "Cloud Run frontend services"
+    type: hard
+    note: "Cloud Run services depend on these backends via VIP"
+  - system: cloud-monitoring-sme
+    resource: "Alerting policies for paymentservice and productcatalogservice"
+    type: soft
+
+risks:
+  - severity: CRITICAL
+    description: "9 backend services share a single VIP (10.23.0.10) — single point of failure"
+  - severity: HIGH
+    description: "GKE frontend (34.46.255.20:80) serves HTTP only — no HTTPS/TLS termination visible"
+  - severity: HIGH
+    description: "Only 2 of 9 backend services have alerting policies — 7 services have no monitoring"
+  - severity: MEDIUM
+    description: "Autopilot cluster with OPTIMIZE_UTILIZATION — aggressive scaling may cause latency spikes"
+  - severity: MEDIUM
+    description: "2 previously deleted GKE clusters left stale firewall rules and potential orphaned resources"
+  - severity: LOW
+    description: "Anthos Service Mesh enabled but mesh observability not verified"
+
+health_checks:
+  pod_restart_threshold: 3
+  node_ready_threshold: "all"
+  latency_p95_threshold: "1.5s"
+  error_rate_threshold: "1%"
+
+escalation_targets:
+  networking: vpc-networking-sme
+  frontend: cloud-run-sme
+  observability: cloud-monitoring-sme
+  security: iam-sme

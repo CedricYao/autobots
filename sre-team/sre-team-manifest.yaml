@@ -1,0 +1,174 @@
+project_id: "boutique-demo-22"
+project_number: "258519306384"
+generated_at: "2026-05-30"
+discovery_method: "gcloud API (live)"
+team_size: 9
+team_composition: "full"
+regions:
+  - "us-central1"
+  - "us-west1"
+
+agents:
+  - template: cloud-run-sme
+    name: "cloud-run-sme"
+    priority: P1-critical
+    config: config/cloud-run-sme.yaml
+    auto_start: true
+    covers:
+      - "3 Cloud Run services (frontend-alt-dev, frontend-alt-stage, frontend-alt-prod)"
+    rationale: "User-facing frontend services — production availability is top priority"
+
+  - template: vpc-networking-sme
+    name: "vpc-networking-sme"
+    priority: P1-critical
+    config: config/vpc-networking-sme.yaml
+    auto_start: true
+    covers:
+      - "2 VPC Access connectors"
+      - "3 static IPs including critical shared VIP 10.23.0.10"
+      - "14 firewall rules (1 CRITICAL, 2 stale)"
+      - "1 forwarding rule (GKE external LB)"
+      - "Cross-region architecture (us-west1 ↔ us-central1)"
+    rationale: "CRITICAL firewall vulnerability, cross-region SPOF, and shared VIP make networking the highest-risk area"
+
+  - template: iam-sme
+    name: "iam-sme"
+    priority: P1-critical
+    config: config/iam-sme.yaml
+    auto_start: true
+    covers:
+      - "1 service account (default compute SA used everywhere)"
+      - "11 project owners"
+      - "Cross-project SA with privilege escalation"
+      - "IAM policy with 40+ bindings"
+    rationale: "Single SA with Editor role across all workloads; cross-project privilege escalation risk"
+
+  - template: microservices-sme
+    name: "microservices-sme"
+    priority: P1-critical
+    config: config/microservices-sme.yaml
+    auto_start: true
+    covers:
+      - "GKE Autopilot cluster online-boutique-764d49 (us-central1)"
+      - "9 backend microservices on shared VIP"
+      - "External LB 34.46.255.20:80"
+      - "Anthos Service Mesh"
+    rationale: "Active GKE cluster hosts all backend services — backbone of the application"
+
+  - template: cloud-deploy-sme
+    name: "cloud-deploy-sme"
+    priority: P2-high
+    config: config/cloud-deploy-sme.yaml
+    auto_start: true
+    covers:
+      - "Pipeline alt-frontend-demo (dev → stage → prod)"
+      - "6 deploy targets"
+      - "Source repo front-end-demo"
+    rationale: "Controls all Cloud Run deployments — pipeline integrity is essential"
+
+  - template: cloud-monitoring-sme
+    name: "cloud-monitoring-sme"
+    priority: P2-high
+    config: config/cloud-monitoring-sme.yaml
+    auto_start: true
+    covers:
+      - "2 alerting policies (Payment Service, Product Catalog)"
+      - "2 dashboards (staging only)"
+      - "Monitoring gaps: no uptime checks, no Cloud Run alerts, no prod dashboard"
+    rationale: "Meta-critical: observability gaps mean other agents are operating blind"
+
+  - template: artifact-registry-sme
+    name: "artifact-registry-sme"
+    priority: P3-medium
+    config: config/artifact-registry-sme.yaml
+    auto_start: true
+    covers:
+      - "Docker repository (us-central1, ~1.6 GB)"
+      - "Container Analysis/scanning active"
+      - "Legacy GCR bucket"
+    rationale: "Supply chain security — all deployed images flow through this registry"
+
+  - template: cloud-storage-sme
+    name: "cloud-storage-sme"
+    priority: P4-low
+    config: config/cloud-storage-sme.yaml
+    auto_start: true
+    covers:
+      - "8 storage buckets (4 Cloud Deploy, 2 build artifacts, 1 Terraform state, 1 legacy GCR)"
+    rationale: "8 buckets exceeds threshold. Terraform state bucket is critical asset."
+
+  - template: sre-expert
+    name: "sre-expert"
+    priority: P2-high
+    config: null
+    auto_start: true
+    note: "General SRE SME — advisory resource for all other agents. Coordinates cross-cutting risk remediation."
+
+cross_cutting_risks:
+  - id: "CCR-001"
+    risk: "allow-ilb-permissive firewall allows ALL traffic from 0.0.0.0/0 (priority 1)"
+    severity: CRITICAL
+    owner: vpc-networking-sme
+    also_affects: [microservices-sme, cloud-run-sme]
+
+  - id: "CCR-002"
+    risk: "Single default Compute Engine SA with Editor role used across all workloads"
+    severity: CRITICAL
+    owner: iam-sme
+    also_affects: [cloud-run-sme, cloud-deploy-sme]
+
+  - id: "CCR-003"
+    risk: "Cross-project SA (deploy-demo-test) has Editor + IAM Admin — privilege escalation possible"
+    severity: CRITICAL
+    owner: iam-sme
+
+  - id: "CCR-004"
+    risk: "Cross-region dependency: Cloud Run (us-west1) → backends (us-central1) via single VPC connector"
+    severity: HIGH
+    owner: vpc-networking-sme
+    also_affects: [cloud-run-sme, microservices-sme]
+
+  - id: "CCR-005"
+    risk: "Shared VIP 10.23.0.10 is SPOF for all 9 backend microservices"
+    severity: HIGH
+    owner: microservices-sme
+    also_affects: [cloud-run-sme, vpc-networking-sme]
+
+  - id: "CCR-006"
+    risk: "Zero alerting coverage for Cloud Run services; no uptime checks for any service"
+    severity: HIGH
+    owner: cloud-monitoring-sme
+    also_affects: [cloud-run-sme]
+
+  - id: "CCR-007"
+    risk: "11 project owners — excessive privilege distribution"
+    severity: HIGH
+    owner: iam-sme
+
+  - id: "CCR-008"
+    risk: "GKE frontend serves HTTP only on port 80 — no TLS termination"
+    severity: HIGH
+    owner: microservices-sme
+    also_affects: [vpc-networking-sme]
+
+  - id: "CCR-009"
+    risk: "All environments (dev/stage/prod) run identical image tag — no differentiation"
+    severity: MEDIUM
+    owner: cloud-deploy-sme
+    also_affects: [cloud-run-sme]
+
+  - id: "CCR-010"
+    risk: "Stale firewall rules and orphaned resources from deleted GKE clusters"
+    severity: MEDIUM
+    owner: vpc-networking-sme
+
+  - id: "CCR-011"
+    risk: "Distributed tracing disabled on Cloud Run frontend (DISABLE_TRACING=1)"
+    severity: MEDIUM
+    owner: cloud-run-sme
+    also_affects: [cloud-monitoring-sme]
+
+  - id: "CCR-012"
+    risk: "No lifecycle policies on storage buckets — unbounded cost growth"
+    severity: LOW
+    owner: cloud-storage-sme

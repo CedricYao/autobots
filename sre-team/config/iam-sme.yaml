@@ -1,0 +1,115 @@
+template: iam-sme
+priority: P1-critical
+project_id: "boutique-demo-22"
+project_number: "258519306384"
+region: "global"
+
+service_accounts:
+  - email: "258519306384-compute@developer.gserviceaccount.com"
+    display_name: "Compute Engine default service account"
+    type: "default"
+    disabled: false
+    roles:
+      - "roles/clouddeploy.jobRunner"
+      - "roles/container.developer"
+      - "roles/editor"
+      - "roles/run.developer"
+    used_by:
+      - "All 3 Cloud Run services (service identity)"
+      - "Cloud Deploy job runner"
+      - "Cloud Run service creator/modifier"
+    severity: CRITICAL
+    note: "Single default SA with Editor role used across ALL workloads — massive blast radius"
+
+  - email: "258519306384@cloudbuild.gserviceaccount.com"
+    display_name: "Cloud Build service account"
+    type: "google-managed"
+    roles:
+      - "roles/cloudbuild.builds.builder"
+      - "roles/clouddeploy.operator"
+
+  - email: "scion-autobot-engineer@deploy-demo-test.iam.gserviceaccount.com"
+    display_name: "Cross-project automation SA"
+    type: "cross-project"
+    source_project: "deploy-demo-test"
+    roles:
+      - "roles/editor"
+      - "roles/iam.serviceAccountAdmin"
+      - "roles/iam.workloadIdentityPoolAdmin"
+      - "roles/resourcemanager.projectIamAdmin"
+      - "roles/run.admin"
+    severity: CRITICAL
+    note: "External SA from deploy-demo-test project has Editor + IAM Admin — can create SAs, modify IAM policy, and manage all resources"
+
+project_owners:
+  count: 11
+  members:
+    - "user:abdel@abdel.cloud"
+    - "user:alevz@google.com"
+    - "user:amartelli@google.com"
+    - "user:cedricyao@google.com"
+    - "user:huanca@google.com"
+    - "user:lucianomartins@google.com"
+    - "user:ptone@google.com"
+    - "user:pvergadia@google.com"
+    - "user:shenxiang@google.com"
+    - "user:vsz@google.com"
+    - "user:wrgarcia@google.com"
+
+editor_grants:
+  - "group:cloud-deploy-eng@google.com"
+  - "serviceAccount:258519306384-compute@developer.gserviceaccount.com"
+  - "serviceAccount:258519306384@cloudservices.gserviceaccount.com"
+  - "serviceAccount:scion-autobot-engineer@deploy-demo-test.iam.gserviceaccount.com"
+  - "user:cbaer@google.com"
+  - "user:cedricyao@google.com"
+  - "user:sanderbogdan@google.com"
+
+secret_manager:
+  api_enabled: true
+  secrets_count: "unknown — requires further discovery"
+  note: "Secret Manager API is enabled (changed since initial survey)"
+
+risks:
+  - severity: CRITICAL
+    description: "Single default Compute Engine SA used for all workloads (Cloud Run, Cloud Deploy, Cloud Build). Compromise of any workload compromises all."
+  - severity: CRITICAL
+    description: "Cross-project SA scion-autobot-engineer@deploy-demo-test.iam.gserviceaccount.com has Editor + IAM Admin + Project IAM Admin — can escalate its own privileges"
+  - severity: HIGH
+    description: "11 project owners — excessive. Reduces accountability and increases credential compromise surface."
+  - severity: HIGH
+    description: "Default compute SA has roles/editor — grants near-full access to all project resources"
+  - severity: HIGH
+    description: "group:cloud-deploy-eng@google.com has Editor — group membership changes grant project-wide write access"
+  - severity: MEDIUM
+    description: "No custom service accounts created — no workload identity isolation"
+  - severity: MEDIUM
+    description: "No Workload Identity Federation configured for CI/CD — key-based auth may be in use"
+
+recommended_actions:
+  - priority: 1
+    action: "Create dedicated service accounts for Cloud Run services and Cloud Deploy"
+  - priority: 2
+    action: "Remove roles/editor from default compute SA"
+  - priority: 3
+    action: "Audit cross-project SA permissions and restrict to minimum required"
+  - priority: 4
+    action: "Reduce project owners to 3-5 maximum"
+  - priority: 5
+    action: "Implement Workload Identity for GKE workloads"
+
+dependencies:
+  - system: cloud-run-sme
+    resource: "Cloud Run service accounts"
+    type: hard
+  - system: cloud-deploy-sme
+    resource: "Deploy job runner SA"
+    type: hard
+  - system: microservices-sme
+    resource: "GKE Workload Identity"
+    type: soft
+
+escalation_targets:
+  cloud_run: cloud-run-sme
+  deployment: cloud-deploy-sme
+  gke: microservices-sme
