@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1440, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/core/dist/hyperframe.runtime.iife.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/shader-transitions/dist/index.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0c10;
+        --ink: #f5f6f9;
+        --muted: #8b949e;
+        --sre: #00e676;
+        --chaos: #ff1744;
+        --accent: #29b6f6;
+        --accent-dim: #0288d1;
+        --font-display: "Space Grotesk", sans-serif;
+        --font-body: "Plus Jakarta Sans", sans-serif;
+        --font-data: "JetBrains Mono", monospace;
+        --border: rgba(255, 255, 255, 0.1);
+        --card-bg: rgba(255, 255, 255, 0.03);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1440px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-body);
+      }
+
+      .scene {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1440px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      .grid-bg {
+        position: absolute;
+        inset: 0;
+        background-size: 40px 40px;
+        background-image: 
+          linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 50;
+        opacity: 0.12;
+        background-image:
+          radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1.2px),
+          radial-gradient(rgba(0, 0, 0, 0.18) 1px, transparent 1.2px);
+        background-size: 3px 3px, 5px 5px;
+        background-position: 0 0, 1px 2px;
+        mix-blend-mode: overlay;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 49;
+        background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
+      }
+
+      .scene-content {
+        width: 100%;
+        height: 100%;
+        padding: 60px 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        z-index: 1;
+      }
+
+      .hud {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 15px;
+        margin-bottom: 30px;
+      }
+
+      .hud-title {
+        font-family: var(--font-data);
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      .title-large {
+        font-family: var(--font-display);
+        font-size: 96px;
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -2px;
+      }
+
+      .title-section {
+        font-family: var(--font-display);
+        font-size: 40px;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+
+      .body-desc {
+        font-family: var(--font-body);
+        font-size: 22px;
+        font-weight: 300;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .layout-grid {
+        display: grid;
+        grid-template-columns: 46% 54%;
+        gap: 40px;
+        align-items: stretch;
+        flex-grow: 1;
+      }
+
+      .terminal-card {
+        background: #0d1117;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font-data);
+        position: relative;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+
+      .prompt-text {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #c9d1d9;
+        white-space: pre-wrap;
+        overflow-y: auto;
+        flex-grow: 1;
+      }
+
+      .highlight {
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      .highlight.sre {
+        color: var(--sre);
+      }
+
+      .highlight.chaos {
+        color: var(--chaos);
+      }
+
+      .diagram-container {
+        position: relative;
+        width: 100%;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.01);
+        overflow: hidden;
+      }
+
+      .node {
+        position: absolute;
+        width: 140px;
+        height: 70px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background: #14161d;
+        font-family: var(--font-data);
+        font-size: 11px;
+        z-index: 10;
+        text-align: center;
+      }
+
+      .node-label {
+        font-size: 9px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+
+      .node.sre-node { border-color: var(--sre); }
+      .node.chaos-node { border-color: var(--chaos); }
+
+      .sme-grid-small {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        width: 100%;
+        padding: 20px;
+      }
+
+      .sme-badge-small {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-family: var(--font-data);
+        font-size: 11px;
+        opacity: 0;
+      }
+
+      .sme-badge-small-name {
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .sme-badge-small-desc {
+        color: var(--muted);
+        font-size: 9px;
+        line-height: 1.2;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-width="1440"
+      data-height="1080"
+      data-start="0"
+      data-duration="30"
+    >
+      <!-- SCENE 1: TITLE/INTRO (0s - 4s) -->
+      <div class="scene clip" id="s1" data-start="0" data-duration="4" data-track-index="0">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content" style="justify-content: center; align-items: center; text-align: center; gap: 20px;">
+          <div id="s1-logo" style="margin-bottom: 15px;">
+            <svg width="120" height="120" viewBox="0 0 100 100" fill="none">
+              <rect x="10" y="10" width="80" height="80" rx="16" stroke="var(--accent)" stroke-width="4" fill="rgba(41, 182, 246, 0.05)" />
+              <path d="M 32 50 L 45 62 L 68 36" stroke="var(--sre)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="68" cy="36" r="5" fill="var(--chaos)" />
+            </svg>
+          </div>
+          <h1 id="s1-title" class="title-large" style="font-size: 72px;">THE PLAYERS</h1>
+          <p id="s1-subtitle" class="body-desc" style="max-width: 800px; font-size: 20px;">
+            Inception and Architecture of the SRE and Chaos Teams
+            <br/><span style="color: var(--accent); font-family: var(--font-data); font-size: 14px; letter-spacing: 2px; text-transform: uppercase;">autonomous agent red-teaming</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- SCENE 2: SRE TEAM INCEPTION (4s - 17s) -->
+      <div class="scene clip" id="s2" data-start="4" data-duration="13" data-track-index="0" style="visibility:hidden;">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content">
+          <div class="hud"><div class="hud-title">01 / PROTAGONIST: SRE TEAM BUILDER</div></div>
+          <div class="layout-grid">
+            <!-- Left Panel: Prompt -->
+            <div class="terminal-card" id="s2-terminal">
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #ff5f56;"></div>
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e;"></div>
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #27c93f;"></div>
+                <span style="font-size: 10px; color: var(--muted); margin-left: 8px;">sre_team_builder.sh</span>
+              </div>
+              <div class="prompt-text" id="s2-prompt-content" style="font-size: 11px; line-height: 1.5;">We are going to create a <span class="highlight sre">SRE Team builder agent</span>. Enlist a product manager agent to do that by <span class="highlight">interviewing the SRE Expert agent</span> about each system in the GCP resource survey of <span class="highlight">boutique-demo-22</span>. There are two goals from this interview:
+1) understanding what are the templates and skills needed for each subject matter expert to create them for boutique-demo-22.
+2) Identify the abstraction necessary that identifies all the critical information necessary for the system SME to be able to do it's job during an incident for their specific system. For example: what are the skills available for that specific system? what are the resource access points to view or modify the system? Where are the records of change? How do you check the status? etc.. Allow the SRE Expert tell you all the things that are needed from a pre-requisite all the way to the skills needed during a wartime event.</div>
+            </div>
+            <!-- Right Panel: Resulting Team -->
+            <div class="diagram-container" id="s2-diagram-box">
+              <div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
+                <div style="padding: 20px 20px 10px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--sre);">Orchestrated SRE Hierarchy</span>
+                  <span style="font-family: var(--font-data); font-size: 11px; color: var(--muted);">9 Domain SMEs</span>
+                </div>
+                <!-- Mini diagram of Lead router -->
+                <div style="position: relative; flex-grow: 1; min-height: 200px;" id="s2-schematic">
+                  <div class="node sre-node" id="s2-node-lead" style="left: calc(50% - 70px); top: 20px;">
+                    SRE Team Lead
+                    <span class="node-label">Coordinator</span>
+                  </div>
+                  <div class="node" id="s2-node-sme1" style="left: 40px; top: 120px; opacity:0;">cloud-run-sme</div>
+                  <div class="node" id="s2-node-sme2" style="left: 210px; top: 120px; opacity:0;">microservices-sme</div>
+                  <div class="node" id="s2-node-sme3" style="left: 380px; top: 120px; opacity:0;">vpc-network-sme</div>
+                  <svg width="100%" height="100%" style="position: absolute; inset: 0; pointer-events: none; z-index: 1;">
+                    <line id="s2-l1" x1="260" y1="90" x2="110" y2="120" stroke="var(--sre)" stroke-width="1.5" style="opacity:0;" />
+                    <line id="s2-l2" x1="260" y1="90" x2="280" y2="120" stroke="var(--sre)" stroke-width="1.5" style="opacity:0;" />
+                    <line id="s2-l3" x1="260" y1="90" x2="450" y2="120" stroke="var(--sre)" stroke-width="1.5" style="opacity:0;" />
+                  </svg>
+                </div>
+                <!-- Additional SMEs badge layout -->
+                <div class="sme-grid-small" style="border-top: 1px solid var(--border);">
+                  <div class="sme-badge-small" id="s2-badge-1"><div class="sme-badge-small-name">cloud-monitoring-sme</div><div class="sme-badge-small-desc">Alerts & audit queries</div></div>
+                  <div class="sme-badge-small" id="s2-badge-2"><div class="sme-badge-small-name">redis-sme</div><div class="sme-badge-small-desc">Cache, keys & memory</div></div>
+                  <div class="sme-badge-small" id="s2-badge-3"><div class="sme-badge-small-name">iam-sme</div><div class="sme-badge-small-desc">Role bindings & access</div></div>
+                  <div class="sme-badge-small" id="s2-badge-4"><div class="sme-badge-small-name">security-sme</div><div class="sme-badge-small-desc">Vulnerability checks</div></div>
+                  <div class="sme-badge-small" id="s2-badge-5"><div class="sme-badge-small-name">gke-cluster-sme</div><div class="sme-badge-small-desc">Cluster nodes & pods</div></div>
+                  <div class="sme-badge-small" id="s2-badge-6"><div class="sme-badge-small-name">compute-sme</div><div class="sme-badge-small-desc">VM hosts & firewalls</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 3: CHAOS TEAM INCEPTION (17s - 30s) -->
+      <div class="scene clip" id="s3" data-start="17" data-duration="13" data-track-index="0" style="visibility:hidden;">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content">
+          <div class="hud"><div class="hud-title">02 / ANTAGONIST: CHAOS TEAM BUILDER</div></div>
+          <div class="layout-grid">
+            <!-- Left Panel: Prompt -->
+            <div class="terminal-card" id="s3-terminal">
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #ff5f56;"></div>
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e;"></div>
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #27c93f;"></div>
+                <span style="font-size: 10px; color: var(--muted); margin-left: 8px;">chaos_team_builder.sh</span>
+              </div>
+              <div class="prompt-text" id="s3-prompt-content" style="font-size: 11px; line-height: 1.5;">I'd like to create an experiment where we introduce a <span class="highlight chaos">chaos engineer</span> and pit a chaos engineering team against automated SRE teams. I want you to do <span class="highlight">research on chaos engineering</span>, starting with the principles and any standard practices, start to drive towards their motivations and outcomes as a driver of what makes a good chaos engineer, leading towards the various tools at the disposal of chaos engineers. I also want you to see if there is any research on using chaos engineers to red-team against sre teams. Save it as <span class="highlight">chaos-engineering-research.md</span>.
+
+Once completed read through the chaos-engineering-research.md file. Very specifically where it highlights the Chaos Agent team structure and the playbook. 
+
+I want you to create a <span class="highlight chaos">chaos-team-builder</span> that constructs a chaos engineering team and the required subagents. It will do that by scanning the boutique-demo-22 project and identifying the necessary skills to apply to the team and their specific domain areas (infra, network and app).</div>
+            </div>
+            <!-- Right Panel: Resulting Team -->
+            <div class="diagram-container" id="s3-diagram-box">
+              <div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
+                <div style="padding: 20px 20px 10px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--chaos);">Red-Team Chaos Structure</span>
+                  <span style="font-family: var(--font-data); font-size: 11px; color: var(--muted);">Strategist + 4 Attackers</span>
+                </div>
+                <!-- Diagram of Chaos Lead & Attackers -->
+                <div style="position: relative; flex-grow: 1;" id="s3-schematic">
+                  <div class="node chaos-node" id="s3-node-lead" style="left: calc(50% - 70px); top: 30px;">
+                    Chaos Strategist
+                    <span class="node-label">Coordinator</span>
+                  </div>
+                  <div class="node" id="s3-node-infra" style="left: 40px; top: 150px; opacity:0;">infra-chaos</div>
+                  <div class="node" id="s3-node-network" style="left: 210px; top: 150px; opacity:0;">network-chaos</div>
+                  <div class="node" id="s3-node-app" style="left: 380px; top: 150px; opacity:0;">app-chaos</div>
+                  <div class="node" id="s3-node-observer" style="left: 210px; top: 250px; opacity:0; border-color: var(--accent);">observer-chaos</div>
+                  <svg width="100%" height="100%" style="position: absolute; inset: 0; pointer-events: none; z-index: 1;">
+                    <line id="s3-l1" x1="260" y1="100" x2="110" y2="150" stroke="var(--chaos)" stroke-width="1.5" style="opacity:0;" />
+                    <line id="s3-l2" x1="260" y1="100" x2="280" y2="150" stroke="var(--chaos)" stroke-width="1.5" style="opacity:0;" />
+                    <line id="s3-l3" x1="260" y1="100" x2="450" y2="150" stroke="var(--chaos)" stroke-width="1.5" style="opacity:0;" />
+                    <line id="s3-l4" x1="280" y1="220" x2="280" y2="250" stroke="var(--accent)" stroke-width="1.5" style="opacity:0;" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Visibility toggles for scenes
+      tl.set("#s1", { autoAlpha: 0 }, 4.0);
+      tl.set("#s2", { autoAlpha: 1 }, 4.0);
+      tl.set("#s2", { autoAlpha: 0 }, 17.0);
+      tl.set("#s3", { autoAlpha: 1 }, 17.0);
+
+      // --- SCENE 1: TITLE/INTRO (0s - 4s) ---
+      tl.from("#s1-logo", { scale: 0.5, opacity: 0, duration: 1.0, ease: "back.out(2)" }, 0.5);
+      tl.from("#s1-title", { y: 30, opacity: 0, duration: 0.8 }, 1.2);
+      tl.from("#s1-subtitle", { y: 20, opacity: 0, duration: 0.8 }, 1.8);
+
+      // --- SCENE 2: SRE TEAM INCEPTION (4s - 17s) ---
+      tl.from("#s2-terminal", { x: -50, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.5);
+      tl.from("#s2-diagram-box", { x: 50, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.8);
+      
+      // Animate SRE Lead Node
+      tl.from("#s2-node-lead", { scale: 0.3, opacity: 0, duration: 0.5, ease: "back.out(1.5)" }, 5.8);
+      
+      // Animate lines and sub-SMEs
+      tl.to("#s2-l1, #s2-l2, #s2-l3", { opacity: 1, duration: 0.4 }, 6.8);
+      tl.to("#s2-node-sme1, #s2-node-sme2, #s2-node-sme3", { opacity: 1, y: 0, duration: 0.6, ease: "back.out(1.2)", stagger: 0.15 }, 7.2);
+      
+      // Stagger auxiliary badges
+      tl.to("#s2-badge-1, #s2-badge-2, #s2-badge-3, #s2-badge-4, #s2-badge-5, #s2-badge-6", {
+        opacity: 1,
+        y: 0,
+        duration: 0.5,
+        stagger: 0.15,
+        ease: "power2.out"
+      }, 8.5);
+
+      // --- SCENE 3: CHAOS TEAM INCEPTION (17s - 30s) ---
+      tl.from("#s3-terminal", { x: -50, opacity: 0, duration: 0.8, ease: "power3.out" }, 17.5);
+      tl.from("#s3-diagram-box", { x: 50, opacity: 0, duration: 0.8, ease: "power3.out" }, 17.8);
+      
+      // Animate Chaos Lead
+      tl.from("#s3-node-lead", { scale: 0.3, opacity: 0, duration: 0.5, ease: "back.out(1.5)" }, 18.8);
+      
+      // Animate attack subagents
+      tl.to("#s3-l1, #s3-l2, #s3-l3", { opacity: 1, duration: 0.4 }, 19.8);
+      tl.to("#s3-node-infra, #s3-node-network, #s3-node-app", { opacity: 1, y: 0, duration: 0.6, ease: "back.out(1.2)", stagger: 0.15 }, 20.2);
+      
+      // Animate observer chaos
+      tl.to("#s3-l4", { opacity: 1, duration: 0.4 }, 21.5);
+      tl.to("#s3-node-observer", { opacity: 1, y: 0, duration: 0.6, ease: "back.out(1.2)" }, 21.8);
+
+      // Shader transitions register
+      const anchors = {
+        s2: document.getElementById('s2'),
+        s3: document.getElementById('s3')
+      };
+
+      // Transition from Title to SRE (t=4s)
+      window.__transitions = window.__transitions || [];
+      window.__transitions.push({
+        type: 'shader',
+        shaderType: 'cross-warp-morph',
+        start: 3.75,
+        duration: 0.5,
+        from: document.getElementById('s1'),
+        to: document.getElementById('s2')
+      });
+
+      // Transition from SRE to Chaos (t=17s)
+      window.__transitions.push({
+        type: 'shader',
+        shaderType: 'whip-pan',
+        start: 16.75,
+        duration: 0.5,
+        from: document.getElementById('s2'),
+        to: document.getElementById('s3')
+      });
+
+      // Bind to hyperframe runtime
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

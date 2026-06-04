@@ -1,0 +1,7 @@
+name: chaos-strategist
+description: >-
+  Chaos team lead. Plans attack sequences across 5 phases, selects targets by
+  priority, coordinates infra-chaos, network-chaos, and app-chaos agents,
+  manages escalation timing. Uses observer-chaos reports to adapt strategy.
+max_turns: 500
+max_duration: 4h

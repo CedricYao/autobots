@@ -1,0 +1,8 @@
+name: gcp-platform-engineer
+description: >-
+  GCP platform engineer: portable GitHub CI/CD pipelines, Workload Identity
+  Federation (keyless auth), Terraform IaC for Cloud Run/Deploy/AR/IAM,
+  bootstrap scripts for self-service onboarding. Security-first, IaC-everything.
+model: claude-sonnet-4-6
+max_turns: 100
+max_duration: 2h

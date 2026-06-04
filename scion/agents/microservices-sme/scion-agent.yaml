@@ -1,0 +1,9 @@
+name: microservices-sme
+description: >-
+  Backend Microservices Subject Matter Expert for boutique-demo-22. Holds deep
+  expertise in the 9 Online Boutique backend services (Ad, Cart, Checkout,
+  Currency, Email, Payment, ProductCatalog, Recommendation, Shipping) behind
+  VIP 10.23.0.10. Kubernetes/GKE operations, gRPC debugging, service mesh,
+  and container diagnostics. Can be interviewed by other agents.
+max_turns: 200
+max_duration: 4h

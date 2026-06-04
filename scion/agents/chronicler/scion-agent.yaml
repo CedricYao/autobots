@@ -1,0 +1,6 @@
+schema_version: "1"
+description: "Project chronicler — maintains a living narrative diary of all work, discoveries, and decisions"
+agent_instructions: agents.md
+system_prompt: system-prompt.md
+max_turns: 200
+max_duration: "4h"

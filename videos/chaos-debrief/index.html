@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1440, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/core/dist/hyperframe.runtime.iife.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/shader-transitions/dist/index.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0d0608;
+        --ink: #f8f5f6;
+        --muted: #9e8e92;
+        --sre: #00e676;
+        --chaos: #ff1744;
+        --chaos-dim: #b2102f;
+        --accent: #ff9100;
+        --border: rgba(255, 23, 68, 0.15);
+        --card-bg: rgba(255, 23, 68, 0.03);
+        --font-display: "Space Grotesk", sans-serif;
+        --font-body: "Plus Jakarta Sans", sans-serif;
+        --font-data: "JetBrains Mono", monospace;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1440px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-body);
+      }
+
+      .scene {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1440px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      .grid-bg {
+        position: absolute;
+        inset: 0;
+        background-size: 40px 40px;
+        background-image: 
+          linear-gradient(to right, rgba(255, 23, 68, 0.03) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 23, 68, 0.03) 1px, transparent 1px);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 50;
+        opacity: 0.12;
+        background-image:
+          radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1.2px),
+          radial-gradient(rgba(0, 0, 0, 0.18) 1px, transparent 1.2px);
+        background-size: 3px 3px, 5px 5px;
+        background-position: 0 0, 1px 2px;
+        mix-blend-mode: overlay;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 49;
+        background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.7) 100%);
+      }
+
+      .scene-content {
+        width: 100%;
+        height: 100%;
+        padding: 60px 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        z-index: 1;
+      }
+
+      .hud {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 15px;
+        margin-bottom: 25px;
+      }
+
+      .hud-title {
+        font-family: var(--font-data);
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      .title-large {
+        font-family: var(--font-display);
+        font-size: 72px;
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -2px;
+      }
+
+      .body-desc {
+        font-family: var(--font-body);
+        font-size: 22px;
+        font-weight: 300;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .layout-grid {
+        display: grid;
+        grid-template-columns: 42% 58%;
+        gap: 35px;
+        align-items: stretch;
+        flex-grow: 1;
+      }
+
+      .terminal-card {
+        background: #120b0d;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font-data);
+        position: relative;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      }
+
+      .prompt-text {
+        font-size: 11px;
+        line-height: 1.5;
+        color: #f3ecee;
+        white-space: pre-wrap;
+        overflow-y: auto;
+        flex-grow: 1;
+      }
+
+      .highlight {
+        color: var(--chaos);
+        font-weight: 700;
+      }
+
+      .highlight.sre {
+        color: var(--sre);
+      }
+
+      .diagram-container {
+        position: relative;
+        width: 100%;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: stretch;
+        background: rgba(255, 23, 68, 0.01);
+        overflow: hidden;
+      }
+
+      /* Architecture Layout */
+      .arch-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        gap: 20px;
+        padding: 30px;
+      }
+
+      .arch-node {
+        background: rgba(255, 23, 68, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 15px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        box-sizing: border-box;
+      }
+
+      .arch-node.coordinator {
+        border-color: var(--chaos);
+        background: rgba(255, 23, 68, 0.08);
+      }
+
+      .arch-node-title {
+        font-family: var(--font-display);
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      .arch-node-desc {
+        font-family: var(--font-body);
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      .arch-sub-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+      }
+
+      /* Blindspot table & comparison styling */
+      .blindspot-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding: 24px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .blindspot-card {
+        border-radius: 8px;
+        padding: 16px 20px;
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        box-sizing: border-box;
+      }
+
+      .blindspot-card.sre-view {
+        background: rgba(0, 230, 118, 0.03);
+        border-color: var(--sre);
+      }
+
+      .blindspot-card.actual-view {
+        background: rgba(255, 23, 68, 0.05);
+        border-color: var(--chaos);
+      }
+
+      .blindspot-status {
+        font-family: var(--font-data);
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .blindspot-desc {
+        font-family: var(--font-body);
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-width="1440"
+      data-height="1080"
+      data-start="0"
+      data-duration="30"
+    >
+      <!-- SCENE 1: TITLE/INTRO (0s - 4s) -->
+      <div class="scene clip" id="s1" data-start="0" data-duration="4" data-track-index="0">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content" style="justify-content: center; align-items: center; text-align: center; gap: 20px;">
+          <div id="s1-logo" style="margin-bottom: 15px;">
+            <svg width="120" height="120" viewBox="0 0 100 100" fill="none">
+              <rect x="10" y="10" width="80" height="80" rx="16" stroke="var(--chaos)" stroke-width="4" fill="rgba(255, 23, 68, 0.05)" />
+              <path d="M 25 25 L 75 75 M 75 25 L 25 75 M 50 20 L 50 80 M 20 50 L 80 50" stroke="var(--chaos)" stroke-width="4" stroke-linecap="round" />
+              <circle cx="50" cy="50" r="6" fill="var(--chaos)" />
+            </svg>
+          </div>
+          <h1 id="s1-title" class="title-large" style="color: var(--chaos);">CHAOS TEAM DEBRIEF</h1>
+          <p id="s1-subtitle" class="body-desc" style="max-width: 800px; font-size: 20px;">
+            Red-Team Inception, Coordinated Multi-Agent Architecture, and the Stealth Redis Attack Vector
+            <br/><span style="color: var(--chaos); font-family: var(--font-data); font-size: 14px; letter-spacing: 2px; text-transform: uppercase;">attack team analysis</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- SCENE 2: CHAOS ARCHITECTURE (4s - 17s) -->
+      <div class="scene clip" id="s2" data-start="4" data-duration="13" data-track-index="0" style="visibility:hidden;">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content">
+          <div class="hud"><div class="hud-title">01 / COORDINATED ATTACK: CHAOS MULTI-AGENT TEAM</div></div>
+          <div class="layout-grid">
+            <div class="terminal-card" id="s2-terminal">
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--chaos);"></div>
+                <span style="font-size: 10px; color: var(--muted); margin-left: 8px;">chaos_team_manifest.yaml</span>
+              </div>
+              <div class="prompt-text">**TEAM DEPLOYMENT MANIFEST:**
+- **Coordinator**: `chaos-strategist` designs multi-vector campaign sequences.
+- **Infrastructure**: `infra-chaos` maps targets (GKE workloads & data-plane Redis).
+- **Network**: `network-chaos` modifies VPC networking, firewalls, and Istio CRDs.
+- **Application**: `app-chaos` injects poisoned env configurations on Cloud Run.
+- **Feedback**: `observer-chaos` audits metrics and reports target system health.</div>
+            </div>
+            <div class="diagram-container" id="s2-diagram-box">
+              <div class="arch-grid">
+                <!-- Coordinator Node -->
+                <div class="arch-node coordinator" id="s2-node-coord">
+                  <span class="arch-node-title" style="color: var(--chaos);">chaos-strategist [Lead]</span>
+                  <p class="arch-node-desc">Coordinates attacks, manages vectors, and ingests telemetry loops.</p>
+                </div>
+                <!-- Sub Agents Row 1 -->
+                <div class="arch-sub-grid">
+                  <div class="arch-node" id="s2-node-infra">
+                    <span class="arch-node-title">infra-chaos</span>
+                    <p class="arch-node-desc">Target: K8s resource deletion, pod scale-to-zero loops, Redis commands.</p>
+                  </div>
+                  <div class="arch-node" id="s2-node-net">
+                    <span class="arch-node-title">network-chaos</span>
+                    <p class="arch-node-desc">Target: NetworkPolicies, Envoy sidecar churn, DNS blackholes.</p>
+                  </div>
+                </div>
+                <!-- Sub Agents Row 2 -->
+                <div class="arch-sub-grid">
+                  <div class="arch-node" id="s2-node-app">
+                    <span class="arch-node-title">app-chaos</span>
+                    <p class="arch-node-desc">Target: Env variables, memory leak payloads, and auth configurations.</p>
+                  </div>
+                  <div class="arch-node" id="s2-node-obs" style="border-color: var(--accent);">
+                    <span class="arch-node-title" style="color: var(--accent);">observer-chaos</span>
+                    <p class="arch-node-desc">Target: Independent telemetry feedback metrics to the Strategist.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 3: REDIS STEALTH ATTACK (17s - 30s) -->
+      <div class="scene clip" id="s3" data-start="17" data-duration="13" data-track-index="0" style="visibility:hidden;">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content">
+          <div class="hud"><div class="hud-title">02 / THE STEALTH VECTOR: REDIS DATA-PLANE FLUSHALL</div></div>
+          <div class="layout-grid">
+            <div class="terminal-card" id="s3-terminal">
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+                <span style="font-size: 12px; font-family: var(--font-display); font-weight: 700; color: var(--chaos);">Attack Log: Redis Data Wipe Loop</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 12px; font-family: var(--font-body); font-size: 12px;">
+                <div>
+                  <span style="color: var(--chaos); font-weight: bold;">1. Command Execution</span>
+                  <br/><span style="color: var(--muted); font-size: 11px;">`infra-chaos` injected raw Redis command `FLUSHALL` via poisoned configs.</span>
+                </div>
+                <div>
+                  <span style="color: var(--chaos); font-weight: bold;">2. 39-Second Loop Execution</span>
+                  <br/><span style="color: var(--muted); font-size: 11px;">Loop ran continuously 67+ times over 44 minutes, wiping cart data at runtime.</span>
+                </div>
+                <div>
+                  <span style="color: var(--chaos); font-weight: bold;">3. Detection Avoidance</span>
+                  <br/><span style="color: var(--muted); font-size: 11px;">K8s metadata, pod health checks, and config state remained 100% unchanged.</span>
+                </div>
+              </div>
+            </div>
+            <div class="diagram-container" id="s3-table-box" style="background: rgba(255, 23, 68, 0.01);">
+              <div class="blindspot-container">
+                <div style="font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--chaos); margin-bottom: -5px;">Incident Blindspot Comparison</div>
+                
+                <!-- SRE View -->
+                <div class="blindspot-card sre-view" id="s3-sre-card">
+                  <span class="blindspot-status" style="color: var(--sre);">[SRE CONFIG SWEEPER] Healthy</span>
+                  <p class="blindspot-desc">"Checked Deployment spec metadata. Checked Pod state (Running/Ready). Config is at baseline. No alerts triggered."</p>
+                </div>
+
+                <!-- Actual View -->
+                <div class="blindspot-card actual-view" id="s3-actual-card">
+                  <span class="blindspot-status" style="color: var(--chaos);">[ACTUAL DATA STATE] Wiped / Compromised</span>
+                  <p class="blindspot-desc">"Redis memory cleared. Every customer cart empty. Checkout fails silently. Zero data-plane integrity."</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Visibility toggles for scenes
+      tl.set("#s1", { autoAlpha: 0 }, 4.0);
+      tl.set("#s2", { autoAlpha: 1 }, 4.0);
+      tl.set("#s2", { autoAlpha: 0 }, 17.0);
+      tl.set("#s3", { autoAlpha: 1 }, 17.0);
+
+      // --- SCENE 1: TITLE/INTRO (0s - 4s) ---
+      tl.from("#s1-logo", { scale: 0.5, opacity: 0, duration: 1.0, ease: "back.out(2)" }, 0.5);
+      tl.from("#s1-title", { y: 30, opacity: 0, duration: 0.8 }, 1.2);
+      tl.from("#s1-subtitle", { y: 20, opacity: 0, duration: 0.8 }, 1.8);
+
+      // --- SCENE 2: CHAOS ARCHITECTURE (4s - 17s) ---
+      tl.from("#s2-terminal", { x: -50, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.5);
+      tl.from("#s2-diagram-box", { x: 50, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.8);
+      tl.from("#s2-node-coord", { y: -20, opacity: 0, duration: 0.6 }, 5.8);
+      tl.from("#s2-node-infra", { y: 20, opacity: 0, duration: 0.5 }, 6.4);
+      tl.from("#s2-node-net", { y: 20, opacity: 0, duration: 0.5 }, 6.7);
+      tl.from("#s2-node-app", { y: 20, opacity: 0, duration: 0.5 }, 7.0);
+      tl.from("#s2-node-obs", { y: 20, opacity: 0, duration: 0.5 }, 7.3);
+
+      // --- SCENE 3: REDIS STEALTH ATTACK (17s - 30s) ---
+      tl.from("#s3-terminal", { x: -50, opacity: 0, duration: 0.8, ease: "power3.out" }, 17.5);
+      tl.from("#s3-table-box", { x: 50, opacity: 0, duration: 0.8, ease: "power3.out" }, 17.8);
+      tl.from("#s3-sre-card", { y: 25, opacity: 0, duration: 0.6 }, 18.8);
+      tl.from("#s3-actual-card", { y: 25, opacity: 0, duration: 0.6 }, 19.4);
+
+      // Shader transitions
+      window.__transitions = window.__transitions || [];
+      window.__transitions.push({
+        type: 'shader',
+        shaderType: 'swirl-vortex',
+        start: 3.75,
+        duration: 0.5,
+        from: document.getElementById('s1'),
+        to: document.getElementById('s2')
+      });
+      window.__transitions.push({
+        type: 'shader',
+        shaderType: 'chromatic-split',
+        start: 16.75,
+        duration: 0.5,
+        from: document.getElementById('s2'),
+        to: document.getElementById('s3')
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

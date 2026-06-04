@@ -1,0 +1,8 @@
+name: chaos-team-builder
+description: >-
+  Meta-agent that scans a GCP project, maps infrastructure to chaos domains
+  (infra, network, app), and generates 5 tailored chaos agent templates plus
+  a chaos-team-manifest.yaml with the attack playbook. Single-task agent —
+  completes and stops after generating the deployment kit.
+max_turns: 100
+max_duration: 2h

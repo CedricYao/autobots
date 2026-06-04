@@ -1,0 +1,331 @@
+---
+name: team-configuration
+description: >-
+  How to match discovered GCP resources to SME templates, fill in project-specific
+  configuration overlays, determine team composition, and generate the final
+  deployment kit (manifest, start script, README, config files).
+---
+
+# Team Configuration
+
+## Template Matching
+
+### Decision Matrix
+
+For each discovered resource category, determine which SME template to include:
+
+```
+IF cloud_run.count > 0:
+    INCLUDE cloud-run-sme
+    priority = P1 if any service has "prod" in name, else P2
+
+IF cloud_deploy.count > 0:
+    INCLUDE cloud-deploy-sme
+    priority = P2
+
+IF artifact_registry.docker_repos > 0:
+    INCLUDE artifact-registry-sme
+    priority = P3
+
+ALWAYS INCLUDE cloud-monitoring-sme
+    priority = P2
+
+IF vpc_connectors.count > 0 OR firewall_rules.permissive > 0 OR cross_region_dependencies.count > 0:
+    INCLUDE vpc-networking-sme
+    priority = P1 if cross_region OR permissive_rules, else P2
+
+ALWAYS INCLUDE iam-sme
+    priority = P1
+
+IF gke.count > 0 OR forwarding_rules.internal > 0:
+    INCLUDE microservices-sme
+    priority = P2
+    IF gke.count == 0 AND forwarding_rules.internal > 0:
+        ADD prerequisite: "Discover VIP backing before operational"
+
+IF storage.bucket_count > 3 OR storage.total_size > 10GB:
+    INCLUDE cloud-storage-sme
+    priority = P4
+ELSE:
+    NOTE: "Storage managed by cloud-deploy-sme (few CI/CD buckets)"
+
+ALWAYS INCLUDE sre-expert
+    priority = P2
+    note = "General SRE advisory resource"
+```
+
+### Team Sizing
+
+```
+resource_count = sum of all discovered resources
+region_count = count of unique regions with active resources
+
+IF resource_count < 5 AND region_count == 1:
+    team_composition = "minimum"
+    Combine: cloud-run-sme + cloud-deploy-sme → "frontend-sre"
+    Combine: vpc-networking-sme + iam-sme + cloud-storage-sme → "platform-sre"
+    Combine: cloud-monitoring-sme + artifact-registry-sme → "observability-sre"
+    total_agents = 3 + sre-expert = 4
+
+ELIF resource_count <= 15 AND region_count <= 2:
+    team_composition = "standard"
+    Include each needed template as separate agent
+    total_agents = matched_templates + sre-expert
+
+ELSE:
+    team_composition = "full"
+    Include all 8 templates + sre-expert
+    total_agents = 9
+```
+
+## Configuration Overlay Schema
+
+Each SME agent gets a config file with project-specific values.
+
+### Required Fields (all agents)
+
+```yaml
+template: "<template-name>"
+priority: "P1-critical|P2-high|P3-medium|P4-low"
+project_id: "<from discovery>"
+project_number: "<from discovery>"
+```
+
+### Resource Fields (per template)
+
+```yaml
+# cloud-run-sme
+region: "<Cloud Run region>"
+resources:
+  - name: "<service name>"
+    url: "<service URL>"
+    environment: "production|staging|development"
+    image: "<current image>"
+    vpc_connector: "<connector name>"
+    service_account: "<runtime SA email>"
+
+# cloud-deploy-sme
+pipelines:
+  - name: "<pipeline name>"
+    stages:
+      - target: "<target name>"
+        environment: "dev|stage|prod"
+        region: "<target region>"
+
+# artifact-registry-sme
+repositories:
+  - name: "<repo name>"
+    location: "<region>"
+    format: "docker|maven|npm"
+    path: "<full repo path>"
+
+# cloud-monitoring-sme
+alerting_policies:
+  - name: "<policy name>"
+    condition: "<condition summary>"
+dashboards:
+  - name: "<dashboard name>"
+uptime_checks:
+  - name: "<check name>"
+    target: "<URL>"
+
+# vpc-networking-sme
+networks:
+  - name: "<network name>"
+    subnets: ["<subnet names>"]
+connectors:
+  - name: "<connector name>"
+    region: "<region>"
+    machine_type: "<type>"
+firewall_rules:
+  - name: "<rule name>"
+    source_ranges: ["<CIDRs>"]
+    risk: "safe|review|critical"
+
+# iam-sme
+service_accounts:
+  - email: "<SA email>"
+    display_name: "<name>"
+    roles: ["<role list>"]
+    key_count: N
+    risk: "safe|review|critical"
+secret_manager_enabled: true|false
+
+# microservices-sme
+clusters:
+  - name: "<cluster name>"
+    location: "<region/zone>"
+    node_count: N
+    namespaces: ["<namespace list>"]
+internal_vips:
+  - ip: "<IP address>"
+    forwarding_rule: "<rule name or 'unknown'>"
+
+# cloud-storage-sme
+buckets:
+  - name: "<bucket name>"
+    location: "<region>"
+    storage_class: "<class>"
+    lifecycle_policy: true|false
+    purpose: "<CI/CD|data|logs>"
+```
+
+### Dependency Fields
+
+```yaml
+dependencies:
+  - system: "<other-sme-template>"
+    resource: "<shared resource name>"
+    type: "hard|soft"
+    description: "<what fails without it>"
+
+escalation_targets:
+  networking: vpc-networking-sme
+  security: iam-sme
+  deployment: cloud-deploy-sme
+  backend: microservices-sme
+  observability: cloud-monitoring-sme
+```
+
+### Immediate Actions
+
+```yaml
+immediate_actions:
+  - action: "<what to do>"
+    severity: "CRITICAL|HIGH|MEDIUM"
+    risk_if_not_done: "<consequence>"
+```
+
+## Generating the Deployment Kit
+
+### sre-team-manifest.yaml
+
+```yaml
+# SRE Team Manifest
+# Generated by sre-team-builder for PROJECT_ID
+# Date: YYYY-MM-DDTHH:MM:SSZ
+
+project:
+  id: "<PROJECT_ID>"
+  number: "<PROJECT_NUMBER>"
+  name: "<PROJECT_NAME>"
+
+team:
+  composition: "minimum|standard|full"
+  agent_count: N
+  generated_by: "sre-team-builder"
+
+agents:
+  - template: "<template-name>"
+    name: "<agent-instance-name>"
+    priority: "<priority>"
+    config: "config/<template-name>.yaml"
+    auto_start: true
+    note: "<optional note>"
+
+cross_cutting_risks:
+  - risk: "<description>"
+    severity: "CRITICAL|HIGH|MEDIUM|LOW"
+    owner: "<template-name>"
+    action: "<recommended remediation>"
+
+uncovered_resources:
+  - type: "<resource type>"
+    count: N
+    note: "<why no template covers it>"
+```
+
+### start-sre-team.sh
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+# SRE Team Start Script for PROJECT_ID
+# Generated by sre-team-builder on YYYY-MM-DD
+# Team composition: COMPOSITION (N agents)
+
+PROJECT_ID="<PROJECT_ID>"
+echo "=== Starting SRE team for ${PROJECT_ID} ==="
+echo ""
+
+# Start agents in priority order (P1 first, then P2, etc.)
+echo "Starting P1 agents..."
+scion start <name> --template <template> --non-interactive
+# ... repeat for each P1 agent
+
+echo ""
+echo "Starting P2 agents..."
+scion start <name> --template <template> --non-interactive
+# ... repeat for each P2 agent
+
+echo ""
+echo "Starting P3/P4 agents..."
+scion start <name> --template <template> --non-interactive
+# ... repeat for remaining agents
+
+echo ""
+echo "=== SRE team started: N agents running ==="
+echo "Run 'scion list --non-interactive' to check agent status"
+echo ""
+echo "Cross-cutting risks to address immediately:"
+echo "  1. <CRITICAL risk> — owned by <agent>"
+echo "  2. <CRITICAL risk> — owned by <agent>"
+```
+
+### README.md
+
+```markdown
+# SRE Team for PROJECT_ID
+
+Generated by sre-team-builder on YYYY-MM-DD.
+
+## Discovery Summary
+
+| Resource Type | Count | Region(s) | Key Finding |
+|--------------|-------|-----------|-------------|
+| Cloud Run | N | region | finding |
+| ... | ... | ... | ... |
+
+## Team Composition: COMPOSITION (N agents)
+
+| Agent | Template | Priority | Scope |
+|-------|----------|----------|-------|
+| agent-name | template-name | P1 | one-line scope |
+| ... | ... | ... | ... |
+
+## Cross-Cutting Risks
+
+| # | Risk | Severity | Owner | Action |
+|---|------|----------|-------|--------|
+| 1 | description | CRITICAL | agent | remediation |
+| ... | ... | ... | ... | ... |
+
+## How to Start
+
+\`\`\`bash
+chmod +x start-sre-team.sh
+./start-sre-team.sh
+\`\`\`
+
+## Verification
+
+After starting, verify agents are running:
+\`\`\`bash
+scion list --non-interactive
+\`\`\`
+```
+
+## Validation Checklist
+
+Before delivering the kit, verify:
+
+- [ ] Every config value comes from discovery output (no placeholders)
+- [ ] Every selected template has a config file in config/
+- [ ] start-sre-team.sh is syntactically valid bash
+- [ ] sre-team-manifest.yaml lists every agent in start script
+- [ ] Cross-cutting risks are documented with owners
+- [ ] Uncovered resources are flagged in README
+- [ ] sre-expert is included in every team
+- [ ] Dependencies between agents are mapped (escalation targets)
+- [ ] Immediate actions are prioritized and assigned to specific agents

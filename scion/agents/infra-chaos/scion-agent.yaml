@@ -1,0 +1,7 @@
+name: infra-chaos
+description: >-
+  Infrastructure chaos agent. Executes resource exhaustion, SA permission
+  manipulation, compute disruption, and instance termination attacks.
+  Reports results to chaos-strategist. Every attack has a rollback.
+max_turns: 100
+max_duration: 4h

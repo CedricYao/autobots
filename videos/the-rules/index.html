@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1440, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/core/dist/hyperframe.runtime.iife.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/shader-transitions/dist/index.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0c10;
+        --ink: #f5f6f9;
+        --muted: #8b949e;
+        --sre: #00e676;
+        --chaos: #ff1744;
+        --accent: #29b6f6;
+        --accent-dim: #0288d1;
+        --font-display: "Space Grotesk", sans-serif;
+        --font-body: "Plus Jakarta Sans", sans-serif;
+        --font-data: "JetBrains Mono", monospace;
+        --border: rgba(255, 255, 255, 0.1);
+        --card-bg: rgba(255, 255, 255, 0.03);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1440px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-body);
+      }
+
+      .scene {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1440px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      .grid-bg {
+        position: absolute;
+        inset: 0;
+        background-size: 40px 40px;
+        background-image: 
+          linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 50;
+        opacity: 0.12;
+        background-image:
+          radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1.2px),
+          radial-gradient(rgba(0, 0, 0, 0.18) 1px, transparent 1.2px);
+        background-size: 3px 3px, 5px 5px;
+        background-position: 0 0, 1px 2px;
+        mix-blend-mode: overlay;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 49;
+        background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
+      }
+
+      .scene-content {
+        width: 100%;
+        height: 100%;
+        padding: 60px 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        z-index: 1;
+      }
+
+      .hud {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 15px;
+        margin-bottom: 30px;
+      }
+
+      .hud-title {
+        font-family: var(--font-data);
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      .title-large {
+        font-family: var(--font-display);
+        font-size: 96px;
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -2px;
+      }
+
+      .title-section {
+        font-family: var(--font-display);
+        font-size: 40px;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+
+      .body-desc {
+        font-family: var(--font-body);
+        font-size: 22px;
+        font-weight: 300;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .layout-grid {
+        display: grid;
+        grid-template-columns: 46% 54%;
+        gap: 40px;
+        align-items: stretch;
+        flex-grow: 1;
+      }
+
+      .terminal-card {
+        background: #0d1117;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font-data);
+        position: relative;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+
+      .prompt-text {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #c9d1d9;
+        white-space: pre-wrap;
+        overflow-y: auto;
+        flex-grow: 1;
+      }
+
+      .highlight {
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      .highlight.sre {
+        color: var(--sre);
+      }
+
+      .highlight.chaos {
+        color: var(--chaos);
+      }
+
+      .diagram-container {
+        position: relative;
+        width: 100%;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.01);
+        overflow: hidden;
+      }
+
+      .node {
+        position: absolute;
+        width: 140px;
+        height: 70px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background: #14161d;
+        font-family: var(--font-data);
+        font-size: 11px;
+        z-index: 10;
+        text-align: center;
+      }
+
+      .node-label {
+        font-size: 9px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+
+      .node.sre-node { border-color: var(--sre); }
+      .node.chaos-node { border-color: var(--chaos); }
+
+      .flow-step {
+        font-family: var(--font-data);
+        font-size: 12px;
+        padding: 12px;
+        border-left: 2px solid var(--accent);
+        background: rgba(255, 255, 255, 0.01);
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-width="1440"
+      data-height="1080"
+      data-start="0"
+      data-duration="30"
+    >
+      <!-- SCENE 1: TITLE/INTRO (0s - 4s) -->
+      <div class="scene clip" id="s1" data-start="0" data-duration="4" data-track-index="0">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content" style="justify-content: center; align-items: center; text-align: center; gap: 20px;">
+          <div id="s1-logo" style="margin-bottom: 15px;">
+            <svg width="120" height="120" viewBox="0 0 100 100" fill="none">
+              <rect x="10" y="10" width="80" height="80" rx="16" stroke="var(--accent)" stroke-width="4" fill="rgba(41, 182, 246, 0.05)" />
+              <path d="M 30 35 L 70 35" stroke="var(--muted)" stroke-width="4" stroke-linecap="round" />
+              <path d="M 30 50 L 70 50" stroke="var(--muted)" stroke-width="4" stroke-linecap="round" />
+              <path d="M 30 65 L 70 65" stroke="var(--muted)" stroke-width="4" stroke-linecap="round" />
+            </svg>
+          </div>
+          <h1 id="s1-title" class="title-large" style="font-size: 72px;">THE RULES</h1>
+          <p id="s1-subtitle" class="body-desc" style="max-width: 800px; font-size: 20px;">
+            Arena Setup, Playbook Milestones, and Post-Battle Continuous Improvement Loop
+            <br/><span style="color: var(--accent); font-family: var(--font-data); font-size: 14px; letter-spacing: 2px; text-transform: uppercase;">the rules of the game</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- SCENE 2: SETUP & BATTLE PROGRESSION (4s - 17s) -->
+      <div class="scene clip" id="s2" data-start="4" data-duration="13" data-track-index="0" style="visibility:hidden;">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content">
+          <div class="hud"><div class="hud-title">01 / PRE-BATTLE & ARENA ENGAGEMENT</div></div>
+          <div class="layout-grid">
+            <!-- Left Panel: Prompt -->
+            <div class="terminal-card" id="s2-terminal">
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #ff5f56;"></div>
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e;"></div>
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #27c93f;"></div>
+                <span style="font-size: 10px; color: var(--muted); margin-left: 8px;">pre_battle_rules.md</span>
+              </div>
+              <div class="prompt-text" id="s2-prompt-content" style="font-size: 11px; line-height: 1.5;">**PRE-BATTLE SETUP**
+1. chaos-team-builder deploys 5-agent chaos team (chaos-strategist, infra/network/app-chaos, observer-chaos)
+2. sre-team-lead activates all 9 SME agents
+3. SRE writes postmortem → runbooks → pushed to GitHub
+4. Both teams briefed: no inter-team communication
+5. Both teams confirm ready
+
+**THE BATTLE** *(coordinator sends milestone updates only)*
+6. Phase 1: reconnaissance (~5 min) → *Coordinator: 'Phase 1 begun'*
+7. Phase 2: initial attack executes directly → *Coordinator: 'Phase 2 begun'*
+8. SRE detects, diagnoses, remediates directly → *Coordinator: 'SRE remediated X of Y'*
+9. Phase 3+: compound attacks if applicable → *Coordinator: 'Phase 3 begun'*
+10. Exercise ends when playbook exhausted or SRE fully remediates</div>
+            </div>
+            <!-- Right Panel: Progression Graphic -->
+            <div class="diagram-container" id="s2-diagram-box">
+              <div style="display: flex; flex-direction: column; width: 100%; height: 100%; padding: 30px; gap: 20px;">
+                <div style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--accent);">Playbook Lifecycle</div>
+                <div class="flow-step" id="s2-step-1">
+                  <span style="color: var(--chaos); font-weight: 700;">[SETUP]</span> Teams Activated & Baseline Config Checked
+                </div>
+                <div class="flow-step" id="s2-step-2" style="border-left-color: var(--chaos);">
+                  <span style="color: var(--chaos); font-weight: 700;">[PHASE 1]</span> Attackers scan cluster & VPC networking (Recon)
+                </div>
+                <div class="flow-step" id="s2-step-3" style="border-left-color: var(--sre);">
+                  <span style="color: var(--sre); font-weight: 700;">[PHASE 2]</span> Automated attack vectors execute / SRE triage begins
+                </div>
+                <div class="flow-step" id="s2-step-4" style="border-left-color: var(--sre);">
+                  <span style="color: var(--sre); font-weight: 700;">[REMEDIATION]</span> SRE writes code, sweeps selectors, scales pods
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 3: POST-BATTLE & LEARNING LOOP (17s - 30s) -->
+      <div class="scene clip" id="s3" data-start="17" data-duration="13" data-track-index="0" style="visibility:hidden;">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content">
+          <div class="hud"><div class="hud-title">02 / POST-BATTLE CONTINUOUS LEARNING LOOP</div></div>
+          <div class="layout-grid">
+            <!-- Left Panel: Prompt -->
+            <div class="terminal-card" id="s3-terminal">
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #ff5f56;"></div>
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e;"></div>
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #27c93f;"></div>
+                <span style="font-size: 10px; color: var(--muted); margin-left: 8px;">post_battle_loop.md</span>
+              </div>
+              <div class="prompt-text" id="s3-prompt-content" style="font-size: 11px; line-height: 1.5;">**POST-BATTLE**
+11. Full cleanup verified by SRE team
+12. observer-chaos scores, both teams debrief
+13. **SRE team extracts learnings:**
+    - New skills/detection gaps → updated SME skill docs
+    - Improved runbooks → pushed to GitHub
+    - Agent template improvements → team-builder updates SME templates
+    - Goal: each battle makes the SRE team measurably better
+14. 3 artifacts published to GCS and sent to Cedric</div>
+            </div>
+            <!-- Right Panel: Feedback Loop Diagram -->
+            <div class="diagram-container" id="s3-diagram-box">
+              <div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
+                <div style="padding: 20px 20px 10px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--sre);">Continuous Learning Loop</span>
+                  <span style="font-family: var(--font-data); font-size: 11px; color: var(--sre);">Measurable Growth</span>
+                </div>
+                <!-- Diamond Flowchart -->
+                <div style="position: relative; flex-grow: 1;" id="s3-schematic">
+                  <!-- Top Node -->
+                  <div class="node sre-node" id="s3-node-verify" style="left: 180px; top: 20px;">
+                    1. Verify Cleanup
+                    <span class="node-label">SRE Team</span>
+                  </div>
+                  <!-- Left Node -->
+                  <div class="node" id="s3-node-score" style="left: 40px; top: 120px; border-color: var(--accent);">
+                    2. Score & Debrief
+                    <span class="node-label">Observer Chaos</span>
+                  </div>
+                  <!-- Bottom Node -->
+                  <div class="node" id="s3-node-extract" style="left: 180px; top: 220px; border-color: var(--sre);">
+                    3. Extract Gaps
+                    <span class="node-label">SME Skill Updates</span>
+                  </div>
+                  <!-- Right Node -->
+                  <div class="node" id="s3-node-improve" style="left: 320px; top: 120px; border-color: var(--accent);">
+                    4. Auto-Improve
+                    <span class="node-label">SME Templates</span>
+                  </div>
+                  <!-- Connector Lines -->
+                  <svg width="480" height="300" style="position: absolute; inset: 0; pointer-events: none; z-index: 1;">
+                    <!-- Verify -> Score -->
+                    <path id="s3-p1" d="M 180 55 Q 110 55 110 120" stroke="var(--border)" stroke-width="1.5" fill="none" style="opacity:0;" />
+                    <!-- Score -> Extract -->
+                    <path id="s3-p2" d="M 110 190 Q 110 255 180 255" stroke="var(--border)" stroke-width="1.5" fill="none" style="opacity:0;" />
+                    <!-- Extract -> Improve -->
+                    <path id="s3-p3" d="M 320 255 Q 390 255 390 190" stroke="var(--border)" stroke-width="1.5" fill="none" style="opacity:0;" />
+                    <!-- Improve -> Verify -->
+                    <path id="s3-p4" d="M 390 120 Q 390 55 320 55" stroke="var(--border)" stroke-width="1.5" fill="none" style="opacity:0;" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Visibility toggles for scenes
+      tl.set("#s1", { autoAlpha: 0 }, 4.0);
+      tl.set("#s2", { autoAlpha: 1 }, 4.0);
+      tl.set("#s2", { autoAlpha: 0 }, 17.0);
+      tl.set("#s3", { autoAlpha: 1 }, 17.0);
+
+      // --- SCENE 1: TITLE/INTRO (0s - 4s) ---
+      tl.from("#s1-logo", { scale: 0.5, opacity: 0, duration: 1.0, ease: "back.out(2)" }, 0.5);
+      tl.from("#s1-title", { y: 30, opacity: 0, duration: 0.8 }, 1.2);
+      tl.from("#s1-subtitle", { y: 20, opacity: 0, duration: 0.8 }, 1.8);
+
+      // --- SCENE 2: SETUP & BATTLE PROGRESSION (4s - 17s) ---
+      tl.from("#s2-terminal", { x: -50, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.5);
+      tl.from("#s2-diagram-box", { x: 50, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.8);
+      
+      // Animate progression steps
+      tl.to("#s2-step-1", { opacity: 1, x: 10, duration: 0.5 }, 5.8);
+      tl.to("#s2-step-2", { opacity: 1, x: 10, duration: 0.5 }, 7.2);
+      tl.to("#s2-step-3", { opacity: 1, x: 10, duration: 0.5 }, 8.6);
+      tl.to("#s2-step-4", { opacity: 1, x: 10, duration: 0.5 }, 10.0);
+
+      // --- SCENE 3: POST-BATTLE & LEARNING LOOP (17s - 30s) ---
+      tl.from("#s3-terminal", { x: -50, opacity: 0, duration: 0.8, ease: "power3.out" }, 17.5);
+      tl.from("#s3-diagram-box", { x: 50, opacity: 0, duration: 0.8, ease: "power3.out" }, 17.8);
+      
+      // Animate circular flowchart
+      tl.from("#s3-node-verify", { scale: 0.3, opacity: 0, duration: 0.5, ease: "back.out(1.5)" }, 18.8);
+      
+      tl.to("#s3-p1", { opacity: 1, duration: 0.3 }, 19.3);
+      tl.from("#s3-node-score", { scale: 0.3, opacity: 0, duration: 0.5, ease: "back.out(1.5)" }, 19.6);
+      
+      tl.to("#s3-p2", { opacity: 1, duration: 0.3 }, 20.1);
+      tl.from("#s3-node-extract", { scale: 0.3, opacity: 0, duration: 0.5, ease: "back.out(1.5)" }, 20.4);
+      
+      tl.to("#s3-p3", { opacity: 1, duration: 0.3 }, 20.9);
+      tl.from("#s3-node-improve", { scale: 0.3, opacity: 0, duration: 0.5, ease: "back.out(1.5)" }, 21.2);
+      
+      tl.to("#s3-p4", { opacity: 1, duration: 0.3 }, 21.7);
+
+      // Shader transitions
+      window.__transitions = window.__transitions || [];
+      window.__transitions.push({
+        type: 'shader',
+        shaderType: 'cross-warp-morph',
+        start: 3.75,
+        duration: 0.5,
+        from: document.getElementById('s1'),
+        to: document.getElementById('s2')
+      });
+
+      window.__transitions.push({
+        type: 'shader',
+        shaderType: 'whip-pan',
+        start: 16.75,
+        duration: 0.5,
+        from: document.getElementById('s2'),
+        to: document.getElementById('s3')
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+schema_version: "1"
+description: "UI/UX designer — creates HTML/CSS prototypes and structured design specifications"
+agent_instructions: agents.md
+system_prompt: system-prompt.md
+max_turns: 60
+max_duration: "45m"

@@ -1,0 +1,7 @@
+name: app-chaos
+description: >-
+  Application chaos agent. Executes environment variable corruption, config
+  drift, deployment sabotage, and dependency failure injection attacks.
+  Reports results to chaos-strategist. Every attack has a rollback.
+max_turns: 100
+max_duration: 4h

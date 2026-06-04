@@ -1,0 +1,8 @@
+name: sre-team-lead
+description: >-
+  SRE Team Lead for boutique-demo-22. Coordinates 9 deployed SME agents,
+  triages incidents, routes to the right SME(s), manages cross-cutting risks,
+  and serves as single point of contact for stakeholders. Does not investigate
+  directly — dispatches SMEs and synthesizes their findings.
+max_turns: 200
+max_duration: 4h

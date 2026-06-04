@@ -1,0 +1,6 @@
+schema_version: "1"
+description: "GKE cluster and Kubernetes workload investigator for pod, node, and network diagnostics"
+agent_instructions: agents.md
+system_prompt: system-prompt.md
+max_turns: 50
+max_duration: "30m"

@@ -1,0 +1,8 @@
+name: observer-chaos
+description: >-
+  Chaos observer agent. Read-only monitoring of the SRE team's response to
+  injected failures. Tracks Time to Detect, Time to Diagnose, and Time to
+  Remediate. Recommends escalation to chaos-strategist. Produces the final
+  debrief scorecard.
+max_turns: 200
+max_duration: 4h

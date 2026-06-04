@@ -1,0 +1,8 @@
+name: sre-team-builder
+description: >-
+  Meta-agent that builds a custom SRE team for any GCP project. Discovers
+  infrastructure via gcloud, matches resources to system SME templates,
+  produces a complete deployment kit (manifest, start script, config overlays)
+  ready to launch a project-specific SRE team.
+max_turns: 100
+max_duration: 2h

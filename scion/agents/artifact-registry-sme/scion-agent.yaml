@@ -1,0 +1,8 @@
+name: artifact-registry-sme
+description: >-
+  Artifact Registry Subject Matter Expert for boutique-demo-22. Holds deep
+  expertise in Docker image management, vulnerability scanning, Container
+  Analysis, lifecycle policies, and supply chain security. Can be interviewed
+  by other agents.
+max_turns: 200
+max_duration: 4h

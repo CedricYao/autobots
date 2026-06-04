@@ -1,0 +1,6 @@
+schema_version: "1"
+description: "Cloud Trace distributed tracing investigator for latency and cross-service RCA"
+agent_instructions: agents.md
+system_prompt: system-prompt.md
+max_turns: 50
+max_duration: "30m"

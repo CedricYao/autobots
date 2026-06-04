@@ -1,0 +1,8 @@
+name: github-manager
+description: >-
+  GitHub integration specialist: manages remote repo operations via SSH,
+  coordinates pushes, branch management, PR creation via gh CLI, and
+  deploy key setup. Never handles credentials through insecure channels.
+model: claude-sonnet-4-6
+max_turns: 100
+max_duration: 2h

@@ -1,0 +1,6 @@
+schema_version: "1"
+description: "Software architect — GCP architecture, evolutionary design, SOLID principles, and ADRs"
+agent_instructions: agents.md
+system_prompt: system-prompt.md
+max_turns: 100
+max_duration: "2h"

@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1440, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/core/dist/hyperframe.runtime.iife.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/shader-transitions/dist/index.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0c10;
+        --ink: #f5f6f9;
+        --muted: #8b949e;
+        --sre: #00e676;
+        --chaos: #ff1744;
+        --accent: #29b6f6;
+        --accent-dim: #0288d1;
+        --font-display: "Space Grotesk", sans-serif;
+        --font-body: "Plus Jakarta Sans", sans-serif;
+        --font-data: "JetBrains Mono", monospace;
+        --border: rgba(255, 255, 255, 0.1);
+        --card-bg: rgba(255, 255, 255, 0.03);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1440px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-body);
+      }
+
+      .scene {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1440px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      .grid-bg {
+        position: absolute;
+        inset: 0;
+        background-size: 40px 40px;
+        background-image: 
+          linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 50;
+        opacity: 0.12;
+        background-image:
+          radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1.2px),
+          radial-gradient(rgba(0, 0, 0, 0.18) 1px, transparent 1.2px);
+        background-size: 3px 3px, 5px 5px;
+        background-position: 0 0, 1px 2px;
+        mix-blend-mode: overlay;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 49;
+        background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
+      }
+
+      .scene-content {
+        width: 100%;
+        height: 100%;
+        padding: 60px 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        z-index: 1;
+      }
+
+      .hud {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 15px;
+        margin-bottom: 25px;
+      }
+
+      .hud-title {
+        font-family: var(--font-data);
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      .title-large {
+        font-family: var(--font-display);
+        font-size: 72px;
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -2px;
+      }
+
+      .body-desc {
+        font-family: var(--font-body);
+        font-size: 22px;
+        font-weight: 300;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .layout-grid {
+        display: grid;
+        grid-template-columns: 42% 58%;
+        gap: 35px;
+        align-items: stretch;
+        flex-grow: 1;
+      }
+
+      .terminal-card {
+        background: #0d1117;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font-data);
+        position: relative;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+
+      .prompt-text {
+        font-size: 11px;
+        line-height: 1.5;
+        color: #c9d1d9;
+        white-space: pre-wrap;
+        overflow-y: auto;
+        flex-grow: 1;
+      }
+
+      .highlight {
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      .highlight.sre {
+        color: var(--sre);
+      }
+
+      .highlight.chaos {
+        color: var(--chaos);
+      }
+
+      .diagram-container {
+        position: relative;
+        width: 100%;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: stretch;
+        background: rgba(255, 255, 255, 0.01);
+        overflow: hidden;
+      }
+
+      /* Custom Table style */
+      .custom-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--font-data);
+        font-size: 11px;
+      }
+      .custom-table th {
+        text-align: left;
+        border-bottom: 2px solid var(--border);
+        padding: 8px;
+        color: var(--muted);
+      }
+      .custom-table td {
+        padding: 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+      }
+
+      /* Visual Tradeoff */
+      .tradeoff-box {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 100%;
+        padding: 15px;
+        gap: 15px;
+        justify-content: center;
+        box-sizing: border-box;
+      }
+      .tradeoff-column {
+        width: 100%;
+        max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        box-sizing: border-box;
+        overflow-wrap: break-word;
+        word-break: break-word;
+      }
+      .tradeoff-column.success {
+        background: rgba(0, 230, 118, 0.05);
+        border-color: var(--sre);
+      }
+      .tradeoff-column.danger {
+        background: rgba(255, 23, 68, 0.05);
+        border-color: var(--chaos);
+      }
+      .tradeoff-metric {
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .tradeoff-desc {
+        font-family: var(--font-body);
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.5;
+        max-width: 100%;
+        overflow-wrap: break-word;
+        word-break: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-width="1440"
+      data-height="1080"
+      data-start="0"
+      data-duration="30"
+    >
+      <!-- SCENE 1: TITLE/INTRO (0s - 4s) -->
+      <div class="scene clip" id="s1" data-start="0" data-duration="4" data-track-index="0">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content" style="justify-content: center; align-items: center; text-align: center; gap: 20px;">
+          <div id="s1-logo" style="margin-bottom: 15px;">
+            <svg width="120" height="120" viewBox="0 0 100 100" fill="none">
+              <rect x="10" y="10" width="80" height="80" rx="16" stroke="var(--sre)" stroke-width="4" fill="rgba(0, 230, 118, 0.05)" />
+              <path d="M 30 65 L 45 40 L 55 50 L 70 30" stroke="var(--sre)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="70" cy="30" r="4" fill="var(--sre)" />
+            </svg>
+          </div>
+          <h1 id="s1-title" class="title-large">SRE POSTMORTEM</h1>
+          <p id="s1-subtitle" class="body-desc" style="max-width: 800px; font-size: 20px;">
+            Incident Triage, The Wartime Sidecar Sacrifice, and Action Items Priority Matrix
+            <br/><span style="color: var(--sre); font-family: var(--font-data); font-size: 14px; letter-spacing: 2px; text-transform: uppercase;">defense team analysis</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- SCENE 2: WARTIME TRADE-OFFS (4s - 17s) -->
+      <div class="scene clip" id="s2" data-start="4" data-duration="13" data-track-index="0" style="visibility:hidden;">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content">
+          <div class="hud"><div class="hud-title">01 / EMERGENCY DECISION: WARTIME TRADE-OFF</div></div>
+          <div class="layout-grid">
+            <div class="terminal-card" id="s2-terminal">
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #ff5f56;"></div>
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e;"></div>
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #27c93f;"></div>
+                <span style="font-size: 10px; color: var(--muted); margin-left: 8px;">incident_decision_log.json</span>
+              </div>
+              <div class="prompt-text">**INCIDENT TRIAGE LOG:**
+- **Trigger**: Chaos team triggers CRD Flood churning Envoy sidecars on GKE.
+- **Status**: GKE control plane crash loop (22 minutes outage).
+- **Decision**: SRE Team Lead authorizes `microservices-sme` to **disable Istio sidecar injection**.
+- **Action**: Pods restarted in plaintext mode without Envoy proxies.
+- **Outcome**: Immediate recovery of system availability. Security metrics degraded.</div>
+            </div>
+            <div class="diagram-container" id="s2-diagram-box">
+              <div class="tradeoff-box">
+                <!-- Restored (Success) -->
+                <div class="tradeoff-column success" id="s2-success">
+                  <span class="tradeoff-metric" style="color: var(--sre);">[RESTORED]</span>
+                  <span style="font-family: var(--font-data); font-size: 18px; font-weight: bold; color: var(--sre);">Availability</span>
+                  <p class="tradeoff-desc">API server recovers. Container startup loop ends. Frontend microservices can process customer checkouts again.</p>
+                </div>
+                <!-- Degraded (Danger) -->
+                <div class="tradeoff-column danger" id="s2-danger">
+                  <span class="tradeoff-metric" style="color: var(--chaos);">[DEGRADED]</span>
+                  <span style="font-family: var(--font-data); font-size: 18px; font-weight: bold; color: var(--chaos);">Security</span>
+                  <p class="tradeoff-desc">Plaintext communication (no mTLS). Loss of L7 authorization controls and Envoy observability metrics.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 3: REMEDIATION & ACTION ITEMS (17s - 30s) -->
+      <div class="scene clip" id="s3" data-start="17" data-duration="13" data-track-index="0" style="visibility:hidden;">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content">
+          <div class="hud"><div class="hud-title">02 / REMEDIATION AND PREVENTION ACTION ITEMS</div></div>
+          <div class="layout-grid">
+            <div class="terminal-card" id="s3-terminal">
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+                <span style="font-size: 12px; font-family: var(--font-display); font-weight: 700; color: var(--sre);">Remediation Key Takeaways</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 12px; font-family: var(--font-body); font-size: 12px;">
+                <div>
+                  <span style="color: var(--sre); font-weight: bold;">1. Identity Separation is Non-Negotiable</span>
+                  <br/><span style="color: var(--muted); font-size: 11px;">The shared default service account (CCR-002) enabled cross-namespace attacks. Isolating permissions is the top priority.</span>
+                </div>
+                <div>
+                  <span style="color: var(--sre); font-weight: bold;">2. Automation Parity is required</span>
+                  <br/><span style="color: var(--muted); font-size: 11px;">Manual troubleshooting cannot compete with API-speed loops. Defense needs proactive configuration sweep scripts.</span>
+                </div>
+                <div>
+                  <span style="color: var(--sre); font-weight: bold;">3. Preventive Declarative Controls</span>
+                  <br/><span style="color: var(--muted); font-size: 11px;">Deploy Pod Disruption Budgets (PDBs) and Horizontal Pod Autoscalers (HPAs) rather than relying on reactive scripts.</span>
+                </div>
+              </div>
+            </div>
+            <div class="terminal-card" id="s3-table-box" style="background: rgba(255, 255, 255, 0.01);">
+              <div style="font-family: var(--font-display); font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--accent);">Action Items Priority Matrix</div>
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Action Item Description</th>
+                    <th>Priority</th>
+                    <th>Owner</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>B2-001</td>
+                    <td>Isolate scion-autobot-engineer IAM permissions</td>
+                    <td style="color: var(--chaos); font-weight: bold;">P0</td>
+                    <td>Coordinator</td>
+                  </tr>
+                  <tr>
+                    <td>B2-002</td>
+                    <td>Create per-service K8s Service Accounts</td>
+                    <td style="color: var(--chaos); font-weight: bold;">P0</td>
+                    <td>iam-sme</td>
+                  </tr>
+                  <tr>
+                    <td>B2-003</td>
+                    <td>Configure HPAs & PDBs on critical workloads</td>
+                    <td style="color: #ff9100;">P1</td>
+                    <td>microservices-sme</td>
+                  </tr>
+                  <tr>
+                    <td>B2-006</td>
+                    <td>Deploy automated 10-second config sweep loops</td>
+                    <td style="color: #ff9100;">P1</td>
+                    <td>microservices-sme</td>
+                  </tr>
+                  <tr>
+                    <td>B2-009</td>
+                    <td>Enforce Redis Config command security rename</td>
+                    <td>P2</td>
+                    <td>microservices-sme</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Visibility toggles for scenes
+      tl.set("#s1", { autoAlpha: 0 }, 4.0);
+      tl.set("#s2", { autoAlpha: 1 }, 4.0);
+      tl.set("#s2", { autoAlpha: 0 }, 17.0);
+      tl.set("#s3", { autoAlpha: 1 }, 17.0);
+
+      // --- SCENE 1: TITLE/INTRO (0s - 4s) ---
+      tl.from("#s1-logo", { scale: 0.5, opacity: 0, duration: 1.0, ease: "back.out(2)" }, 0.5);
+      tl.from("#s1-title", { y: 30, opacity: 0, duration: 0.8 }, 1.2);
+      tl.from("#s1-subtitle", { y: 20, opacity: 0, duration: 0.8 }, 1.8);
+
+      // --- SCENE 2: WARTIME TRADE-OFFS (4s - 17s) ---
+      tl.from("#s2-terminal", { x: -50, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.5);
+      tl.from("#s2-diagram-box", { x: 50, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.8);
+      tl.from("#s2-success", { y: 25, opacity: 0, duration: 0.6 }, 5.8);
+      tl.from("#s2-danger", { y: 25, opacity: 0, duration: 0.6 }, 6.4);
+
+      // --- SCENE 3: REMEDIATION & ACTION ITEMS (17s - 30s) ---
+      tl.from("#s3-terminal", { x: -50, opacity: 0, duration: 0.8, ease: "power3.out" }, 17.5);
+      tl.from("#s3-table-box", { x: 50, opacity: 0, duration: 0.8, ease: "power3.out" }, 17.8);
+
+      // Shader transitions
+      window.__transitions = window.__transitions || [];
+      window.__transitions.push({
+        type: 'shader',
+        shaderType: 'cross-warp-morph',
+        start: 3.75,
+        duration: 0.5,
+        from: document.getElementById('s1'),
+        to: document.getElementById('s2')
+      });
+      window.__transitions.push({
+        type: 'shader',
+        shaderType: 'whip-pan',
+        start: 16.75,
+        duration: 0.5,
+        from: document.getElementById('s2'),
+        to: document.getElementById('s3')
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

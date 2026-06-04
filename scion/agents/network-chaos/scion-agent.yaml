@@ -1,0 +1,7 @@
+name: network-chaos
+description: >-
+  Network chaos agent. Executes NetworkPolicy injection, VPC connector
+  disruption, firewall rule manipulation, and latency injection attacks.
+  Reports results to chaos-strategist. Every attack has a rollback.
+max_turns: 100
+max_duration: 4h

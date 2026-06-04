@@ -1,0 +1,254 @@
+manifest_version: "1.0"
+generated_by: chaos-team-builder
+description: >-
+  Chaos engineering team manifest. Defines team composition, attack playbook
+  structure, scoring criteria, and deployment instructions. The chaos-team-builder
+  agent populates the attack_surfaces section after scanning the target project.
+
+team:
+  - name: chaos-strategist
+    template: chaos-strategist
+    role: team_lead
+    domain: coordination
+    max_turns: 200
+    max_duration: 4h
+    starts_first: true
+    description: Plans attack sequences, coordinates agents, manages escalation
+
+  - name: infra-chaos
+    template: infra-chaos
+    role: attacker
+    domain: infrastructure
+    max_turns: 100
+    max_duration: 2h
+    capabilities:
+      - pod_termination
+      - resource_exhaustion
+      - sa_manipulation
+      - compute_disruption
+      - cloud_run_revision_manipulation
+
+  - name: network-chaos
+    template: network-chaos
+    role: attacker
+    domain: network
+    max_turns: 100
+    max_duration: 2h
+    capabilities:
+      - networkpolicy_injection
+      - firewall_rule_manipulation
+      - vpc_connector_disruption
+      - latency_injection
+      - partition_simulation
+
+  - name: app-chaos
+    template: app-chaos
+    role: attacker
+    domain: application
+    max_turns: 100
+    max_duration: 2h
+    capabilities:
+      - env_var_corruption
+      - configmap_manipulation
+      - deployment_sabotage
+      - health_check_disruption
+      - dependency_failure_injection
+
+  - name: observer-chaos
+    template: observer-chaos
+    role: observer
+    domain: observation
+    max_turns: 200
+    max_duration: 4h
+    read_only: true
+    capabilities:
+      - system_health_monitoring
+      - sre_activity_tracking
+      - metric_calculation
+      - debrief_reporting
+
+# attack_surfaces is populated by chaos-team-builder after scanning
+# the target project. Structure shown here as a template.
+attack_surfaces:
+  infrastructure: []
+  #  - target: <resource-name>
+  #    type: compute|sa|storage
+  #    priority: P1|P2|P3|P4
+  #    attacks: [list of applicable attack types]
+  #    rollback: <rollback command>
+  #    known_gap: <CCR reference if applicable>
+
+  network: []
+  #  - target: <resource-name>
+  #    type: firewall|connector|policy|vip
+  #    priority: P1|P2|P3|P4
+  #    attacks: [list of applicable attack types]
+  #    rollback: <rollback command>
+  #    known_gap: <CCR reference if applicable>
+
+  application: []
+  #  - target: <resource-name>
+  #    type: config|deploy|image|dependency
+  #    priority: P1|P2|P3|P4
+  #    attacks: [list of applicable attack types]
+  #    rollback: <rollback command>
+  #    known_gap: <CCR reference if applicable>
+
+playbook:
+  phase_1_reconnaissance:
+    duration_minutes: 5
+    objectives:
+      - Survey current system state and identify targets
+      - Assess SRE team monitoring coverage
+      - Identify known gaps from cross-cutting risks
+      - Establish observer baseline metrics
+    agents:
+      - chaos-strategist
+      - observer-chaos
+    exit_criteria: Target list finalized, baseline established
+
+  phase_2_initial_attack:
+    duration_minutes: 10
+    objectives:
+      - Single-vector failure against P3/P4 target
+      - Measure baseline TTD and response quality
+      - Calibrate SRE team response speed
+    agents:
+      - chaos-strategist
+      - one_attacker
+      - observer-chaos
+    exit_criteria: Attack resolved OR observer reports detection complete
+
+  phase_3_escalation:
+    duration_minutes: 15
+    objectives:
+      - Compound failure with 2 vectors across 2 domains
+      - Target a gap identified in Phase 1 or Phase 2
+      - Test whether SRE team correlates related failures
+    agents:
+      - chaos-strategist
+      - two_attackers
+      - observer-chaos
+    exit_criteria: Both attacks resolved OR 25 min total elapsed
+
+  phase_4_advanced_attack:
+    duration_minutes: 20
+    objectives:
+      - Multi-vector, multi-service failure
+      - Target remediation capabilities
+      - Exploit time pressure and cognitive load
+    agents:
+      - chaos-strategist
+      - infra-chaos
+      - network-chaos
+      - app-chaos
+      - observer-chaos
+    exit_criteria: Hard time limit reached OR all attacks executed
+
+  phase_5_debrief:
+    duration_minutes: 30
+    objectives:
+      - Collect all metrics from observer
+      - Verify all attacks rolled back
+      - Calculate scores and determine match outcome
+      - Produce structured debrief report
+    agents:
+      - chaos-strategist
+      - observer-chaos
+    exit_criteria: Debrief report delivered
+
+scoring:
+  chaos_score:
+    formula: "sum(Impact * Duration_minutes * Stealth)"
+    components:
+      impact:
+        description: User-facing impact caused by the failure
+        scale: 0-5
+        levels:
+          0: No observable impact
+          1: Minor degradation, workaround exists
+          2: Feature partially broken
+          3: Feature fully broken
+          4: Multiple features broken
+          5: Total service outage
+      duration:
+        description: Minutes from attack to SRE remediation
+        unit: minutes
+      stealth:
+        description: How long the attack went undetected
+        levels:
+          1: Detected immediately (< 2 min)
+          2: Detected within 10 min
+          3: Undetected for > 10 min
+
+  sre_score:
+    formula: "sum(Detection + Diagnosis + Remediation + Quality)"
+    max_per_failure: 100
+    components:
+      detection:
+        max: 25
+        thresholds:
+          25: "TTD < 2 min"
+          20: "TTD < 5 min"
+          15: "TTD < 10 min"
+          10: "TTD < 15 min"
+          0: "TTD > 15 min"
+      diagnosis:
+        max: 25
+        thresholds:
+          25: "Correct root cause identified"
+          15: "Partial — right area, wrong specific cause"
+          0: "Wrong root cause"
+      remediation:
+        max: 25
+        thresholds:
+          25: "TTR < 5 min"
+          20: "TTR < 10 min"
+          15: "TTR < 15 min"
+          10: "TTR < 30 min"
+          0: "TTR > 30 min"
+      quality:
+        max: 25
+        thresholds:
+          25: "Clean remediation, no secondary issues"
+          15: "Minor side effects from remediation"
+          0: "Remediation introduced new failure"
+
+  time_thresholds:
+    ttd:
+      target: 5 min
+      stretch: 2 min
+      critical: 15 min (auto-loss for this failure)
+    ttdiag:
+      target: 10 min
+      stretch: 5 min
+      critical: 30 min (significant penalty)
+    ttr:
+      target: 15 min
+      stretch: 10 min
+      critical: 60 min (auto-loss for this failure)
+    ttrecov:
+      target: 20 min
+      stretch: 15 min
+      critical: 90 min (auto-loss for this failure)
+
+  match_outcomes:
+    sre_decisive_win: "All failures — TTD <5min AND TTR <15min AND quality=clean"
+    sre_win: ">75% of failures — TTD <10min AND TTR <30min"
+    draw: "50-75% of failures handled within time targets"
+    chaos_win: "<50% of failures handled within time targets"
+    chaos_decisive_win: "Any failure undetected >30min OR SRE introduced secondary failure"
+
+deployment:
+  start_order:
+    - observer-chaos
+    - chaos-strategist
+    - infra-chaos
+    - network-chaos
+    - app-chaos
+  start_commands:
+    observer: "scion start observer-chaos --type observer-chaos --non-interactive"
+    strategist: "scion start chaos-strategist --type chaos-strategist --non-interactive"
+    infra: "scion start infra-chaos --type infra-chaos --non-interactive"
+    network: "scion start network-chaos --type network-chaos --non-interactive"
+    app: "scion start app-chaos --type app-chaos --non-interactive"

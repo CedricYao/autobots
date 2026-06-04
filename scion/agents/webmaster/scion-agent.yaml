@@ -1,0 +1,6 @@
+schema_version: "1"
+description: "Project webmaster — curates artifacts into a public project site and communicates progress to stakeholders"
+agent_instructions: agents.md
+system_prompt: system-prompt.md
+max_turns: 200
+max_duration: "4h"

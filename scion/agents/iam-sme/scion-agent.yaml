@@ -1,0 +1,8 @@
+name: iam-sme
+description: >-
+  IAM and Security Subject Matter Expert for boutique-demo-22. Holds deep
+  expertise in IAM policy analysis, service account lifecycle, least-privilege
+  design, Workload Identity Federation, Secret Manager, audit log analysis,
+  and IAM incident response. Can be interviewed by other agents.
+max_turns: 200
+max_duration: 4h

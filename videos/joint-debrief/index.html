@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1440, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/core/dist/hyperframe.runtime.iife.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/shader-transitions/dist/index.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #070b12;
+        --ink: #f2f5f8;
+        --muted: #8b95a5;
+        --sre: #00e676;
+        --chaos: #ff1744;
+        --accent: #29b6f6;
+        --accent-dim: #0288d1;
+        --border: rgba(41, 182, 246, 0.15);
+        --card-bg: rgba(41, 182, 246, 0.03);
+        --font-display: "Space Grotesk", sans-serif;
+        --font-body: "Plus Jakarta Sans", sans-serif;
+        --font-data: "JetBrains Mono", monospace;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1440px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-body);
+      }
+
+      .scene {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1440px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      .grid-bg {
+        position: absolute;
+        inset: 0;
+        background-size: 40px 40px;
+        background-image: 
+          linear-gradient(to right, rgba(41, 182, 246, 0.03) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(41, 182, 246, 0.03) 1px, transparent 1px);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 50;
+        opacity: 0.12;
+        background-image:
+          radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1.2px),
+          radial-gradient(rgba(0, 0, 0, 0.18) 1px, transparent 1.2px);
+        background-size: 3px 3px, 5px 5px;
+        background-position: 0 0, 1px 2px;
+        mix-blend-mode: overlay;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 49;
+        background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.7) 100%);
+      }
+
+      .scene-content {
+        width: 100%;
+        height: 100%;
+        padding: 60px 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        z-index: 1;
+      }
+
+      .hud {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 15px;
+        margin-bottom: 25px;
+      }
+
+      .hud-title {
+        font-family: var(--font-data);
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      .title-large {
+        font-family: var(--font-display);
+        font-size: 72px;
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -2px;
+      }
+
+      .body-desc {
+        font-family: var(--font-body);
+        font-size: 22px;
+        font-weight: 300;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .layout-grid {
+        display: grid;
+        grid-template-columns: 42% 58%;
+        gap: 35px;
+        align-items: stretch;
+        flex-grow: 1;
+      }
+
+      .terminal-card {
+        background: #090c12;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font-data);
+        position: relative;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      }
+
+      .prompt-text {
+        font-size: 11px;
+        line-height: 1.5;
+        color: #e2eaf5;
+        white-space: pre-wrap;
+        overflow-y: auto;
+        flex-grow: 1;
+      }
+
+      .highlight {
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      .highlight.sre {
+        color: var(--sre);
+      }
+
+      .highlight.chaos {
+        color: var(--chaos);
+      }
+
+      .diagram-container {
+        position: relative;
+        width: 100%;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: stretch;
+        background: rgba(41, 182, 246, 0.01);
+        overflow: hidden;
+      }
+
+      /* Shared Learning cards styling */
+      .learning-box {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding: 24px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .learning-card {
+        border-radius: 8px;
+        padding: 16px 20px;
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        box-sizing: border-box;
+        background: var(--card-bg);
+      }
+
+      .learning-title {
+        font-family: var(--font-display);
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+
+      .learning-desc {
+        font-family: var(--font-body);
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-width="1440"
+      data-height="1080"
+      data-start="0"
+      data-duration="30"
+    >
+      <!-- SCENE 1: TITLE/INTRO (0s - 4s) -->
+      <div class="scene clip" id="s1" data-start="0" data-duration="4" data-track-index="0">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content" style="justify-content: center; align-items: center; text-align: center; gap: 20px;">
+          <div id="s1-logo" style="margin-bottom: 15px;">
+            <svg width="120" height="120" viewBox="0 0 100 100" fill="none">
+              <rect x="10" y="10" width="80" height="80" rx="16" stroke="var(--accent)" stroke-width="4" fill="rgba(41, 182, 246, 0.05)" />
+              <circle cx="35" cy="50" r="12" stroke="var(--sre)" stroke-width="3" fill="rgba(0, 230, 118, 0.1)" />
+              <circle cx="65" cy="50" r="12" stroke="var(--chaos)" stroke-width="3" fill="rgba(255, 23, 68, 0.1)" />
+              <path d="M 47 50 L 53 50" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" />
+            </svg>
+          </div>
+          <h1 id="s1-title" class="title-large" style="color: var(--accent);">JOINT DEBRIEF</h1>
+          <p id="s1-subtitle" class="body-desc" style="max-width: 800px; font-size: 20px;">
+            High-Level Architectural & Systems Engineering Lessons
+            <br/><span style="color: var(--accent); font-family: var(--font-data); font-size: 14px; letter-spacing: 2px; text-transform: uppercase;">shared team learnings</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- SCENE 2: ISOLATION & CONTEXT LIFECYCLE (4s - 17s) -->
+      <div class="scene clip" id="s2" data-start="4" data-duration="13" data-track-index="0" style="visibility:hidden;">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content">
+          <div class="hud"><div class="hud-title">01 / ARCHITECTURE: ISOLATION & CONTEXT LIFECYCLE</div></div>
+          <div class="layout-grid">
+            <div class="terminal-card" id="s2-terminal">
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--accent);"></div>
+                <span style="font-size: 10px; color: var(--muted); margin-left: 8px;">agent_isolation_rules.json</span>
+              </div>
+              <div class="prompt-text">**SYSTEM SPECIFICATIONS:**
+- **Blast Radius Containment**: Agents must be bespoke and strictly isolated per application boundary/IAM project.
+- **Context Exhaustion Control**: Long incidents exhaust model windows. Systems must run background chronicler summaries.
+- **SME Instance Rotation**: Dynamically spin up fresh instances of agents seeded only with compressed state summaries.</div>
+            </div>
+            <div class="diagram-container" id="s2-diagram-box">
+              <div class="learning-box">
+                <div style="font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: -5px;">Core Design Requirements</div>
+                
+                <!-- Tenant Separation Card -->
+                <div class="learning-card" id="s2-card-separation">
+                  <span class="learning-title" style="color: var(--sre);">1. Tenant & IAM Separation</span>
+                  <p class="learning-desc">Isolating SRE agents per project boundary limits the IAM access permissions of individual agents, blocking cross-tenant security escalation.</p>
+                </div>
+
+                <!-- Context Lifecycle Card -->
+                <div class="learning-card" id="s2-card-context" style="border-color: var(--accent);">
+                  <span class="learning-title" style="color: var(--accent);">2. Context Lifecycle Management</span>
+                  <p class="learning-desc">Periodic 3-minute summarization ticks combine with rotating fresh instances of agents to prevent reasoning degradation during long outages.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 3: ASYMMETRIC LATENCY & POLICY (17s - 30s) -->
+      <div class="scene clip" id="s3" data-start="17" data-duration="13" data-track-index="0" style="visibility:hidden;">
+        <div class="grid-bg"></div><div class="grain"></div><div class="vignette"></div>
+        <div class="scene-content">
+          <div class="hud"><div class="hud-title">02 / RUNTIME: ASYMMETRIC SPEED & POLICY ENGINE</div></div>
+          <div class="layout-grid">
+            <div class="terminal-card" id="s3-terminal">
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+                <span style="font-size: 12px; font-family: var(--font-display); font-weight: 700; color: var(--accent);">Reactive vs Preventive Controls</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 12px; font-family: var(--font-body); font-size: 12px;">
+                <div>
+                  <span style="color: var(--accent); font-weight: bold;">1. The Asymmetric Speed Gap</span>
+                  <br/><span style="color: var(--muted); font-size: 11px;">API scale-down takes milliseconds, whereas physical container initialization/pulling takes 30-45 seconds.</span>
+                </div>
+                <div>
+                  <span style="color: var(--accent); font-weight: bold;">2. The Limitation of Script Sweepers</span>
+                  <br/><span style="color: var(--muted); font-size: 11px;">Because startup latency is physical, no reactive recovery script loop can restore system availability in time.</span>
+                </div>
+                <div>
+                  <span style="color: var(--accent); font-weight: bold;">3. Declarative Prevention Controls</span>
+                  <br/><span style="color: var(--muted); font-size: 11px;">Enforce baseline states (HPAs & PDBs) at the K8s API server level to block scaling mutations before they execute.</span>
+                </div>
+              </div>
+            </div>
+            <div class="diagram-container" id="s3-table-box" style="background: rgba(41, 182, 246, 0.01);">
+              <div class="learning-box">
+                <div style="font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: -5px;">Incident Management Strategy</div>
+
+                <!-- Reactive Card -->
+                <div class="learning-card" id="s3-card-reactive" style="border-color: var(--chaos); background: rgba(255,23,68,0.02);">
+                  <span class="learning-title" style="color: var(--chaos);">Reactive Loops (Too Slow)</span>
+                  <p class="learning-desc">Waiting for pods to scale to zero, then executing shell scripts to scale them back up. Blocked by container boot latencies.</p>
+                </div>
+
+                <!-- Preventive Card -->
+                <div class="learning-card" id="s3-card-preventive" style="border-color: var(--sre); background: rgba(0,230,118,0.02);">
+                  <span class="learning-title" style="color: var(--sre);">Preventive Policy (Zero Latency)</span>
+                  <p class="learning-desc">Applying Pod Disruption Budgets (PDB) and Horizontal Pod Autoscalers (HPA). K8s API blocks scale-down natively.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Visibility toggles for scenes
+      tl.set("#s1", { autoAlpha: 0 }, 4.0);
+      tl.set("#s2", { autoAlpha: 1 }, 4.0);
+      tl.set("#s2", { autoAlpha: 0 }, 17.0);
+      tl.set("#s3", { autoAlpha: 1 }, 17.0);
+
+      // --- SCENE 1: TITLE/INTRO (0s - 4s) ---
+      tl.from("#s1-logo", { scale: 0.5, opacity: 0, duration: 1.0, ease: "back.out(2)" }, 0.5);
+      tl.from("#s1-title", { y: 30, opacity: 0, duration: 0.8 }, 1.2);
+      tl.from("#s1-subtitle", { y: 20, opacity: 0, duration: 0.8 }, 1.8);
+
+      // --- SCENE 2: ISOLATION & CONTEXT LIFECYCLE (4s - 17s) ---
+      tl.from("#s2-terminal", { x: -50, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.5);
+      tl.from("#s2-diagram-box", { x: 50, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.8);
+      tl.from("#s2-card-separation", { y: 25, opacity: 0, duration: 0.6 }, 5.8);
+      tl.from("#s2-card-context", { y: 25, opacity: 0, duration: 0.6 }, 6.4);
+
+      // --- SCENE 3: ASYMMETRIC LATENCY & POLICY (17s - 30s) ---
+      tl.from("#s3-terminal", { x: -50, opacity: 0, duration: 0.8, ease: "power3.out" }, 17.5);
+      tl.from("#s3-table-box", { x: 50, opacity: 0, duration: 0.8, ease: "power3.out" }, 17.8);
+      tl.from("#s3-card-reactive", { y: 25, opacity: 0, duration: 0.6 }, 18.8);
+      tl.from("#s3-card-preventive", { y: 25, opacity: 0, duration: 0.6 }, 19.4);
+
+      // Shader transitions
+      window.__transitions = window.__transitions || [];
+      window.__transitions.push({
+        type: 'shader',
+        shaderType: 'gravitational-lens',
+        start: 3.75,
+        duration: 0.5,
+        from: document.getElementById('s1'),
+        to: document.getElementById('s2')
+      });
+      window.__transitions.push({
+        type: 'shader',
+        shaderType: 'swirl-vortex',
+        start: 16.75,
+        duration: 0.5,
+        from: document.getElementById('s2'),
+        to: document.getElementById('s3')
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

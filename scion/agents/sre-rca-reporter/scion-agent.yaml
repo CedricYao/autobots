@@ -1,0 +1,6 @@
+schema_version: "1"
+description: "RCA report synthesizer — combines findings from investigation agents into structured incident reports"
+agent_instructions: agents.md
+system_prompt: system-prompt.md
+max_turns: 40
+max_duration: "20m"
