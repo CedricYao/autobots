@@ -33,13 +33,24 @@
 
 ### Indirect/Concurrent Impact (Redis-Cart Preemption — NOT PSH-caused)
 
+Two distinct error bursts (NOT continuous degradation):
+
+| Burst | Window | Duration | Errors | Cause |
+|-------|--------|----------|--------|-------|
+| **#1** | 14:06:14Z – 14:06:59Z | ~45 seconds | 52 | Transient Redis connectivity loss on old pod (10.91.4.9) |
+| **#2** | 15:07:00Z – 15:08:27Z | ~87 seconds | 65 | redis-cart pod PREEMPTED by Autopilot; new pod (10.91.4.11) started at 15:07:52Z |
+
+**Normal operations confirmed between bursts (14:07Z–15:06Z, ~59 minutes).**
+
 | Component | Status | Detail |
 |-----------|--------|--------|
-| redis-cart pod | RECOVERED | Preempted by Autopilot ~47m ago, rescheduled successfully |
-| cartservice | RECOVERED | gRPC FailedPrecondition errors during redis downtime |
-| frontend-alt-prod | RECOVERED | 7 HTTP 500s in 2h window (13:06–15:08 UTC) |
-| frontend-alt-stage | RECOVERED | 6 HTTP 500s in 2h window |
-| frontend-alt-dev | HEALTHY | No errors |
+| redis-cart pod | RECOVERED | New pod redis-cart-6c7d999768-lhg68, Running, Ready 2/2, 0 restarts. BGSAVE healthy. |
+| cartservice | RECOVERED | Pod cartservice-79dcbdbfc-d88bn reconnected via DNS at 15:08:01Z. Healthy 52+ minutes. |
+| frontend-alt-prod | RECOVERED | 7 HTTP 500s across both bursts. p99 latency peaked at 6503ms (SLO breach at 5000ms). |
+| frontend-alt-stage | RECOVERED | 6 HTTP 500s across both bursts. |
+| frontend-alt-dev | HEALTHY | No errors throughout. |
+
+Root cause hypothesis: Node gk3-online-boutique-764d49-pool-3-4a7d2de9-7dhh went NotReady, triggering Autopilot node replacement. Burst 1 was an early symptom; Burst 2 was the preemption itself.
 
 ### Blast Radius Verdict by Domain
 
@@ -142,12 +153,15 @@
 
 | # | Action | Owner | Priority | Rationale |
 |---|--------|-------|----------|-----------|
-| 1 | Review spurious firewall logs from PSH window | cloud-monitoring-sme | P2 | Determine if spurious logs triggered false alerts or polluted dashboards |
-| 2 | Verify redis-cart stability | microservices-sme | P1 | Confirm preemption-related errors fully resolved, no recurrence |
-| 3 | Set min-instances=2 on frontend-alt-prod | cloud-run-sme | P1 | Prevent cold-start delays during recovery scenarios |
-| 4 | Confirm allow-ilb-permissive removal status | vpc-networking-sme | P1 | Live data shows it's not in firewall rules — verify CCR-001 status |
-| 5 | Deploy PodDisruptionBudgets on critical services | microservices-sme | P1 | Prevent simultaneous preemption of critical pods |
-| 6 | Add graceful cart degradation to frontend | cloud-run-sme | P2 | Render page without cart instead of returning 500 |
+| 1 | Add Redis connectivity failure alert | cloud-monitoring-sme | P1 | Root cascade signal (RedisConnectionException) has NO alert — this burst was invisible to alerting |
+| 2 | Tighten uptime check threshold from 50% to 95% | cloud-monitoring-sme | P1 | 90% degradation did NOT trigger the current 50% threshold |
+| 3 | Add backup notification channel (Slack/PagerDuty) | cloud-monitoring-sme | P1 | Single email channel is a delivery SPOF |
+| 4 | Deploy PodDisruptionBudgets on critical services | microservices-sme | P1 | Prevent simultaneous preemption — redis-cart replicas=1 is root fragility |
+| 5 | Set min-instances=2 on frontend-alt-prod | cloud-run-sme | P1 | Prevent cold-start delays during recovery scenarios |
+| 6 | Confirm allow-ilb-permissive removal status | vpc-networking-sme | P1 | Live data shows it's not in firewall rules — verify CCR-001 status |
+| 7 | Review spurious firewall logs from PSH window | cloud-monitoring-sme | P2 | Determine if spurious logs polluted dashboards |
+| 8 | Add graceful cart degradation to frontend | cloud-run-sme | P2 | Render page without cart instead of returning 500 |
+| 9 | Consider Redis HA or Memorystore migration | microservices-sme | P2 | Single-replica Redis with no persistence guarantees is a recurring risk |
 
 ### Phase 3: Medium-Term Hardening (1-2 Weeks)
 
