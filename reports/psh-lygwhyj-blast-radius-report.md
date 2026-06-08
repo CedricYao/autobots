@@ -184,19 +184,23 @@ Root cause hypothesis: Node gk3-online-boutique-764d49-pool-3-4a7d2de9-7dhh went
 
 | Risk | Previous Status | Current Finding | Updated Status |
 |------|----------------|-----------------|----------------|
-| **CCR-001**: allow-ilb-permissive | CRITICAL / Open | Rule NOT in current firewall list (27 rules checked). **Needs confirmation from vpc-networking-sme.** | POTENTIALLY RESOLVED |
+| **CCR-001**: allow-ilb-permissive | REMEDIATED (2026-06-05) | **CONFIRMED REMEDIATED.** Rule deleted and replaced with 3 scoped rules (allow-connector-to-vip, allow-serverless-subnet-to-backends, allow-gcp-health-checks) — all with logging enabled. Risk catalog already updated by vpc-networking-sme. | REMEDIATED |
 | **CCR-002**: Single default SA | CRITICAL / Open | Confirmed: all workloads still share default compute SA with roles/editor. No progress. | CRITICAL / Open |
-| **CCR-003**: Unknown VIP backing | HIGH / Open | **RESOLVED.** VIP 10.23.0.10 has 9 ILB forwarding rules, one per backend service. Created 2026-06-04. | RESOLVED |
+| **CCR-003**: Cross-project SA escalation | CRITICAL / Open | scion-autobot-engineer SA still has projectIamAdmin + SA admin. No progress. | CRITICAL / Open |
+| **CCR-014**: Unknown VIP backing | HIGH / Open | **RESOLVED.** VIP 10.23.0.10 now has 9 ILB forwarding rules, one per backend service. Created 2026-06-04. Risk catalog updated. | REMEDIATED |
+| **CCR-013**: VPC Flow Logs disabled | REMEDIATED (2026-06-05) | Already resolved — flow logs enabled on gke-vip-subnet and serverless-connector subnets. | REMEDIATED |
 
 ---
 
 ## Section 5: Key Positive Findings
 
-1. **CCR-003 is RESOLVED** — VIP 10.23.0.10 now has 9 fully-configured ILB forwarding rules with allowGlobalAccess=true
-2. **CCR-001 may be RESOLVED** — `allow-ilb-permissive` not found in current firewall rules
-3. **IAM policy is clean** — No unauthorized changes detected since Battle 3
-4. **Supply chain is clean** — Deployed images have 0 CVEs, SLSA L3 provenance, BinAuthz attestation
-5. **Both traffic paths are operational** — PATH A and PATH B returning HTTP 200
+1. **CCR-014 is RESOLVED** — VIP 10.23.0.10 now has 9 fully-configured ILB forwarding rules with allowGlobalAccess=true (created 2026-06-04)
+2. **CCR-001 CONFIRMED REMEDIATED** — `allow-ilb-permissive` was deleted 2026-06-05 and replaced with 3 scoped, logged rules (per risk catalog)
+3. **CCR-013 CONFIRMED REMEDIATED** — VPC Flow Logs enabled on critical subnets (2026-06-05)
+4. **IAM policy is clean** — No unauthorized changes detected since Battle 3
+5. **Supply chain is clean** — Deployed images have 0 CVEs, SLSA L3 provenance, BinAuthz attestation
+6. **Both traffic paths are operational** — PATH A and PATH B returning HTTP 200
+7. **Detection gap noted** — PSH resolved at 08:04Z but team notified at ~15:54Z (8h delay). Recommend PSH event Pub/Sub subscription.
 
 ---
 

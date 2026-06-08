@@ -5,18 +5,24 @@ generated_at: "2026-05-30"
 risks:
   # ─── CRITICAL ─────────────────────────────────────────────────
   - id: "CCR-001"
-    severity: CRITICAL
+    severity: REMEDIATED
     title: "allow-ilb-permissive firewall allows ALL traffic from anywhere"
+    status: COMPLETED
+    remediated_at: "2026-06-05T04:58Z"
+    remediated_by: vpc-networking-sme
     description: |
-      Firewall rule 'allow-ilb-permissive' with priority 1 allows ALL protocols
-      from 0.0.0.0/0 to ALL instances. This effectively disables the firewall
-      for the entire VPC. Any instance in the default network is fully exposed.
+      REMEDIATED: allow-ilb-permissive (priority 1, 0.0.0.0/0, ALL protocols) has been
+      DELETED and replaced with 3 scoped rules:
+        1. allow-connector-to-vip (10.10.0.0/28 → GKE nodes, backend service ports, pri 100)
+        2. allow-serverless-subnet-to-backends (10.22.0.0/28 → GKE nodes, backend service ports, pri 100)
+        3. allow-gcp-health-checks (GCP health check ranges → GKE nodes, health ports, pri 100)
+      All replacement rules have logging enabled. No traffic impact observed.
     affected_systems:
       - vpc-networking-sme
       - microservices-sme
       - cloud-run-sme
     owner: vpc-networking-sme
-    remediation: "Scope rule to specific source ranges and protocols needed for ILB health checks"
+    remediation: "COMPLETED — see ccr-001-firewall-remediation.yaml"
 
   - id: "CCR-002"
     severity: CRITICAL
@@ -74,17 +80,21 @@ risks:
     remediation: "Consider per-service VIPs or service mesh routing for isolation"
 
   - id: "CCR-006"
-    severity: HIGH
-    title: "Cloud Run services have zero alerting coverage"
+    severity: CRITICAL
+    title: "Alerting is non-functional — zero notification channels project-wide"
     description: |
-      Existing alert policies only cover GKE workloads (paymentservice, productcatalogservice).
-      No alerts exist for Cloud Run error rates, latency, or availability.
-      Also no uptime checks for any service.
+      Both existing alert policies (Payment Service Health Alert, Product Catalog p95
+      Latency Alert) have ZERO notification channels configured. Alerts fire but no one
+      is notified — no email, no PagerDuty, no Pub/Sub. Additionally: no Cloud Run
+      alerting exists at all, and zero uptime checks are configured for any service.
+      This was a direct contributor to delayed detection in INC-2026-0601-001 Phase 1.
+      Severity upgraded from HIGH to CRITICAL based on post-incident discovery.
     affected_systems:
       - cloud-monitoring-sme
       - cloud-run-sme
     owner: cloud-monitoring-sme
-    remediation: "Create alert policies for Cloud Run error rate, latency, and instance count; add uptime checks"
+    remediation: "1) Create notification channels (PagerDuty/email). 2) Wire existing alerts to channels. 3) Add Cloud Run alert policies. 4) Add uptime checks for all frontends."
+    incident_reference: "INC-2026-0601-001 — alert at 15:55Z fired into void"
 
   - id: "CCR-007"
     severity: HIGH
@@ -108,6 +118,52 @@ risks:
       - vpc-networking-sme
     owner: microservices-sme
     remediation: "Configure HTTPS with managed SSL certificate or Ingress with TLS"
+
+  - id: "CCR-013"
+    severity: REMEDIATED
+    title: "VPC Flow Logs disabled on all critical subnets"
+    status: COMPLETED
+    remediated_at: "2026-06-05T05:01Z"
+    remediated_by: vpc-networking-sme
+    description: |
+      REMEDIATED: VPC Flow Logs enabled on both critical subnets:
+        - gke-vip-subnet (10.23.0.0/24): 50% sampling, 5s aggregation, all metadata
+        - serverless-connector (10.22.0.0/28): 50% sampling, 5s aggregation, all metadata
+      Provides visibility into VPC connector → VIP traffic, anomaly detection,
+      and firewall rule correlation via included metadata.
+    affected_systems:
+      - vpc-networking-sme
+      - cloud-monitoring-sme
+    owner: vpc-networking-sme
+    remediation: "COMPLETED — see ccr-013-flow-logs-enablement.yaml"
+    discovered: "2026-06-02 — vpc-networking-sme peacetime audit"
+
+  - id: "CCR-014"
+    severity: REMEDIATED
+    title: "Internal VIP 10.23.0.10 has no forwarding rule — backing unknown"
+    status: COMPLETED
+    remediated_at: "2026-06-04T22:04Z"
+    remediated_by: microservices-sme
+    description: |
+      REMEDIATED: VIP 10.23.0.10 now has 9 ILB forwarding rules (one per backend service),
+      all with allowGlobalAccess=true on gke-vip-subnet (us-central1):
+        - checkoutservice-ilb :5050
+        - emailservice-ilb :5000
+        - paymentservice-ilb :50052
+        - currencyservice-ilb :7000
+        - shippingservice-ilb :50051
+        - cartservice-ilb :7070
+        - productcatalogservice-ilb :3550
+        - adservice-ilb :9555
+        - recommendationservice-ilb :8080
+      Confirmed healthy during PSH LYGWHYJ blast radius analysis (2026-06-08).
+      All 9 services reachable from both traffic paths.
+    affected_systems:
+      - vpc-networking-sme
+      - microservices-sme
+    owner: vpc-networking-sme
+    remediation: "COMPLETED — 9 ILB forwarding rules created 2026-06-04"
+    discovered: "2026-06-02 — vpc-networking-sme peacetime audit"
 
   # ─── MEDIUM ───────────────────────────────────────────────────
   - id: "CCR-009"
